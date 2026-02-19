@@ -1,0 +1,21 @@
+experiment_id: "phase1_v2_test_execution"
+benchmark: "swebench"
+num_trials: 3
+output_dir: "results/phase1"
+seed: 42
+instance_ids: []
+
+harness:
+  llm:
+    provider: "anthropic"
+    model: "claude-sonnet-4-6-20250514"
+    max_tokens: 8192
+    temperature: 0.0
+  verification_method: "test_execution"  # V2
+  verification_granularity: "per_feature"  # G2 (fixed for Phase 1)
+  recovery_strategy: "retry_in_context"   # R1 (fixed for Phase 1)
+  max_iterations: 50
+  max_recovery_attempts: 3
+  max_tokens_budget: 500000
+  timeout_seconds: 600
+  workspace_dir: "/tmp/agent-workspace"

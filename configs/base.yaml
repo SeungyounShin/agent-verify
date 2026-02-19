@@ -1,0 +1,26 @@
+experiment_id: "pilot_v0_baseline"
+benchmark: "swebench"
+num_trials: 1
+output_dir: "results"
+seed: 42
+instance_ids: []
+
+harness:
+  llm:
+    provider: "anthropic"
+    model: "claude-sonnet-4-6-20250514"
+    max_tokens: 8192
+    temperature: 0.0
+  verification_method: "none"  # V0 baseline
+  verification_granularity: "task_end_only"
+  recovery_strategy: "retry_in_context"
+  max_iterations: 50
+  max_recovery_attempts: 3
+  max_tokens_budget: 500000
+  timeout_seconds: 600
+  workspace_dir: "/tmp/agent-workspace"
+  system_prompt: |
+    You are a software engineering agent. You can read and write files,
+    execute bash commands, and use git. Complete the given task by modifying
+    the codebase as needed. When you believe the task is complete, state
+    'TASK_COMPLETE' in your response.
