@@ -5,70 +5,88 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from agent_verify.benchmark.base import Task, TaskResult
-from agent_verify.benchmark.swebench import load_swebench_tasks
+from agent_verify.benchmark.swebench import (
+    evaluate_task,
+    load_swebench_tasks,
+    provision_workspace,
+)
 from agent_verify.config import ExperimentConfig, load_config
 from agent_verify.harness import AgentHarness
 from agent_verify.logging.logger import ExperimentLogger
 
 
 def run_experiment(config: ExperimentConfig) -> list[TaskResult]:
-    """Run a full experiment."""
+    """Run a full experiment on SWE-bench tasks."""
     logger = ExperimentLogger(config.experiment_id, config.output_dir)
 
     # Load tasks
     if config.benchmark == "swebench":
-        if not config.instance_ids:
-            print("Warning: No instance_ids specified. Provide a dataset path and IDs.")
+        print("Loading SWE-bench Verified dataset...")
+        instance_ids = config.instance_ids if config.instance_ids else None
+        tasks = load_swebench_tasks(
+            split="test",
+            instance_ids=instance_ids,
+        )
+        if not tasks:
+            print("No tasks loaded. Check instance_ids in config.")
             return []
-        # TODO: Support dataset path in config
-        tasks: list[Task] = []
+        print(f"Loaded {len(tasks)} tasks")
     else:
         print(f"Unknown benchmark: {config.benchmark}")
         return []
 
-    harness = AgentHarness(config=config.harness, logger=logger)
-
     results = []
     for trial in range(config.num_trials):
-        print(f"\n=== Trial {trial + 1}/{config.num_trials} ===")
-        for task in tasks:
-            print(f"  Running task: {task.task_id}")
+        print(f"\n{'='*60}")
+        print(f"Trial {trial + 1}/{config.num_trials}")
+        print(f"{'='*60}")
+
+        for i, task in enumerate(tasks):
+            print(f"\n[{i+1}/{len(tasks)}] Task: {task.task_id}")
+            print(f"  Repo: {task.repo}")
+
+            # Provision workspace (clone repo, checkout base commit)
+            try:
+                print(f"  Provisioning workspace...")
+                workspace = provision_workspace(
+                    task,
+                    workspace_root=config.harness.workspace_dir,
+                )
+                print(f"  Workspace: {workspace}")
+            except Exception as e:
+                print(f"  ERROR provisioning workspace: {e}")
+                results.append(TaskResult(
+                    task_id=task.task_id,
+                    resolved=False,
+                    completion_reason="provision_error",
+                    error=str(e),
+                ))
+                continue
+
+            # Run the agent
+            harness = AgentHarness(config=config.harness, logger=logger)
             result = harness.run(task)
+
+            # Evaluate with SWE-bench test suite
+            print(f"  Evaluating...")
+            eval_result = evaluate_task(task)
+            result.resolved = eval_result.get("resolved", False)
+            result.metadata["eval"] = eval_result
+
             results.append(result)
-            print(f"    Resolved: {result.resolved} | "
-                  f"Tokens: {result.input_tokens + result.output_tokens} | "
-                  f"Time: {result.wall_clock_seconds:.1f}s")
+            status = "RESOLVED" if result.resolved else "FAILED"
+            print(f"  {status} | Tokens: {result.input_tokens + result.output_tokens:,} | "
+                  f"Time: {result.wall_clock_seconds:.1f}s | "
+                  f"Iterations: {result.iterations}")
 
     # Save summary
-    summary_path = Path(config.output_dir) / f"{config.experiment_id}_summary.json"
-    summary_path.parent.mkdir(parents=True, exist_ok=True)
-    summary = {
-        "experiment_id": config.experiment_id,
-        "config": config.model_dump(),
-        "results": [
-            {
-                "task_id": r.task_id,
-                "resolved": r.resolved,
-                "tokens": r.input_tokens + r.output_tokens,
-                "wall_clock_seconds": r.wall_clock_seconds,
-                "tool_calls": r.tool_call_count,
-                "verifications": r.verification_count,
-                "recoveries": r.recovery_count,
-                "iterations": r.iterations,
-                "completion_reason": r.completion_reason,
-            }
-            for r in results
-        ],
-        "resolve_rate": sum(1 for r in results if r.resolved) / len(results) if results else 0,
-    }
-    with open(summary_path, "w") as f:
-        json.dump(summary, f, indent=2, default=str)
-    print(f"\nSummary saved to {summary_path}")
-
+    _save_summary(config, results)
     return results
 
 
@@ -84,6 +102,42 @@ def run_single_task(config: ExperimentConfig, task_description: str) -> TaskResu
     )
 
     return harness.run(task)
+
+
+def _save_summary(config: ExperimentConfig, results: list[TaskResult]) -> None:
+    summary_path = Path(config.output_dir) / f"{config.experiment_id}_summary.json"
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+
+    resolved_count = sum(1 for r in results if r.resolved)
+    total = len(results)
+    summary = {
+        "experiment_id": config.experiment_id,
+        "config": config.model_dump(),
+        "resolve_rate": resolved_count / total if total else 0,
+        "resolved": resolved_count,
+        "total": total,
+        "total_tokens": sum(r.input_tokens + r.output_tokens for r in results),
+        "avg_wall_clock_seconds": sum(r.wall_clock_seconds for r in results) / total if total else 0,
+        "results": [
+            {
+                "task_id": r.task_id,
+                "resolved": r.resolved,
+                "tokens": r.input_tokens + r.output_tokens,
+                "wall_clock_seconds": r.wall_clock_seconds,
+                "tool_calls": r.tool_call_count,
+                "verifications": r.verification_count,
+                "recoveries": r.recovery_count,
+                "iterations": r.iterations,
+                "completion_reason": r.completion_reason,
+                "error": r.error,
+            }
+            for r in results
+        ],
+    }
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=2, default=str)
+    print(f"\nSummary saved to {summary_path}")
+    print(f"Resolve rate: {resolved_count}/{total} ({summary['resolve_rate']:.1%})")
 
 
 def main() -> None:

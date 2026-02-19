@@ -1,0 +1,31 @@
+experiment_id: "smoke_test_v0"
+benchmark: "swebench"
+num_trials: 1
+output_dir: "results/smoke"
+seed: 42
+instance_ids:
+  - "sympy__sympy-22914"
+
+harness:
+  llm:
+    provider: "anthropic"
+    model: "claude-sonnet-4-6"
+    max_tokens: 4096
+    temperature: 0.0
+  verification_method: "none"
+  verification_granularity: "task_end_only"
+  recovery_strategy: "retry_in_context"
+  max_iterations: 30
+  max_recovery_attempts: 3
+  max_tokens_budget: 500000
+  timeout_seconds: 600
+  workspace_dir: "/tmp/swebench-workspace"
+  system_prompt: |
+    You are a software engineering agent. You can read and write files,
+    execute bash commands, and use git.
+
+    You are working in a repository that has a GitHub issue to fix.
+    Read the relevant source code, understand the problem, make the fix,
+    and verify it works.
+
+    When you believe the task is complete, state 'TASK_COMPLETE' in your response.

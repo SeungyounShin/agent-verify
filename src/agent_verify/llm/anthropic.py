@@ -12,7 +12,7 @@ from .base import LLMClient, LLMResponse
 class AnthropicClient(LLMClient):
     """Claude API client with tool use support."""
 
-    def __init__(self, model: str = "claude-sonnet-4-6-20250514"):
+    def __init__(self, model: str = "claude-sonnet-4-6"):
         self.model = model
         self.client = anthropic.Anthropic()
 

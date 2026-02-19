@@ -8,7 +8,7 @@ instance_ids: []
 harness:
   llm:
     provider: "anthropic"
-    model: "claude-sonnet-4-6-20250514"
+    model: "claude-sonnet-4-6"
     max_tokens: 8192
     temperature: 0.0
   verification_method: "test_execution"  # V2
