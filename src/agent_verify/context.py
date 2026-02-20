@@ -11,14 +11,36 @@ from typing import Any
 class TokenUsage:
     input_tokens: int = 0
     output_tokens: int = 0
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
+    total_cost_usd: float = 0.0
 
     @property
     def total(self) -> int:
         return self.input_tokens + self.output_tokens
 
-    def add(self, input_tokens: int, output_tokens: int) -> None:
+    @property
+    def total_input_tokens(self) -> int:
+        """Total input tokens including cached ones."""
+        return self.input_tokens + self.cache_creation_input_tokens + self.cache_read_input_tokens
+
+    @property
+    def cache_hit_rate(self) -> float:
+        """Fraction of total input tokens served from cache."""
+        total = self.total_input_tokens
+        if total == 0:
+            return 0.0
+        return self.cache_read_input_tokens / total
+
+    def add(self, input_tokens: int, output_tokens: int,
+            cache_creation_input_tokens: int = 0,
+            cache_read_input_tokens: int = 0,
+            cost_usd: float = 0.0) -> None:
         self.input_tokens += input_tokens
         self.output_tokens += output_tokens
+        self.cache_creation_input_tokens += cache_creation_input_tokens
+        self.cache_read_input_tokens += cache_read_input_tokens
+        self.total_cost_usd += cost_usd
 
 
 @dataclass
@@ -89,6 +111,10 @@ class Context:
                 "input": self.token_usage.input_tokens,
                 "output": self.token_usage.output_tokens,
                 "total": self.token_usage.total,
+                "cache_creation": self.token_usage.cache_creation_input_tokens,
+                "cache_read": self.token_usage.cache_read_input_tokens,
+                "cache_hit_rate": f"{self.token_usage.cache_hit_rate:.1%}",
+                "cost_usd": self.token_usage.total_cost_usd,
             },
             "elapsed_seconds": self.elapsed_seconds,
             "iteration_count": self.iteration_count,

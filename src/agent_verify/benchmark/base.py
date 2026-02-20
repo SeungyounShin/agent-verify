@@ -25,6 +25,9 @@ class TaskResult:
     resolved: bool
     input_tokens: int = 0
     output_tokens: int = 0
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
+    cost_usd: float = 0.0
     wall_clock_seconds: float = 0.0
     tool_call_count: int = 0
     verification_count: int = 0

@@ -43,6 +43,9 @@ class ExperimentLogger:
         output_tokens: int,
         stop_reason: str,
         has_tool_use: bool,
+        cache_creation_input_tokens: int = 0,
+        cache_read_input_tokens: int = 0,
+        cost_usd: float = 0.0,
     ) -> None:
         self._write_event({
             "event": "llm_call",
@@ -50,6 +53,9 @@ class ExperimentLogger:
             "iteration": iteration,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
+            "cache_creation_input_tokens": cache_creation_input_tokens,
+            "cache_read_input_tokens": cache_read_input_tokens,
+            "cost_usd": round(cost_usd, 6),
             "stop_reason": stop_reason,
             "has_tool_use": has_tool_use,
         })

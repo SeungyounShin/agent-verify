@@ -81,7 +81,11 @@ def run_experiment(config: ExperimentConfig) -> list[TaskResult]:
 
             results.append(result)
             status = "RESOLVED" if result.resolved else "FAILED"
-            print(f"  {status} | Tokens: {result.input_tokens + result.output_tokens:,} | "
+            total_in = result.input_tokens + result.cache_creation_input_tokens + result.cache_read_input_tokens
+            cache_pct = (result.cache_read_input_tokens / total_in * 100) if total_in else 0
+            print(f"  {status} | Tokens: {total_in + result.output_tokens:,} | "
+                  f"Cache hit: {cache_pct:.0f}% | "
+                  f"Cost: ${result.cost_usd:.4f} | "
                   f"Time: {result.wall_clock_seconds:.1f}s | "
                   f"Iterations: {result.iterations}")
 
@@ -110,19 +114,33 @@ def _save_summary(config: ExperimentConfig, results: list[TaskResult]) -> None:
 
     resolved_count = sum(1 for r in results if r.resolved)
     total = len(results)
+    total_cost = sum(r.cost_usd for r in results)
+    total_tokens = sum(r.input_tokens + r.output_tokens for r in results)
+    total_cache_read = sum(r.cache_read_input_tokens for r in results)
+    total_all_input = sum(
+        r.input_tokens + r.cache_creation_input_tokens + r.cache_read_input_tokens
+        for r in results
+    )
+    cache_hit_rate = total_cache_read / total_all_input if total_all_input else 0
+
     summary = {
         "experiment_id": config.experiment_id,
         "config": config.model_dump(),
         "resolve_rate": resolved_count / total if total else 0,
         "resolved": resolved_count,
         "total": total,
-        "total_tokens": sum(r.input_tokens + r.output_tokens for r in results),
+        "total_tokens": total_tokens,
+        "total_cost_usd": round(total_cost, 4),
+        "cache_hit_rate": round(cache_hit_rate, 4),
         "avg_wall_clock_seconds": sum(r.wall_clock_seconds for r in results) / total if total else 0,
         "results": [
             {
                 "task_id": r.task_id,
                 "resolved": r.resolved,
                 "tokens": r.input_tokens + r.output_tokens,
+                "cache_read_tokens": r.cache_read_input_tokens,
+                "cache_creation_tokens": r.cache_creation_input_tokens,
+                "cost_usd": round(r.cost_usd, 4),
                 "wall_clock_seconds": r.wall_clock_seconds,
                 "tool_calls": r.tool_call_count,
                 "verifications": r.verification_count,
@@ -138,6 +156,7 @@ def _save_summary(config: ExperimentConfig, results: list[TaskResult]) -> None:
         json.dump(summary, f, indent=2, default=str)
     print(f"\nSummary saved to {summary_path}")
     print(f"Resolve rate: {resolved_count}/{total} ({summary['resolve_rate']:.1%})")
+    print(f"Total cost: ${total_cost:.4f} | Cache hit rate: {cache_hit_rate:.1%}")
 
 
 def main() -> None:

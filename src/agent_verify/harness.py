@@ -78,6 +78,8 @@ class AgentHarness:
                 "completion_reason": result.completion_reason,
                 "tokens": result.input_tokens + result.output_tokens,
                 "wall_clock_seconds": result.wall_clock_seconds,
+                "cost_usd": context.token_usage.total_cost_usd,
+                "cache_hit_rate": context.token_usage.cache_hit_rate,
             })
 
         return result
@@ -112,8 +114,13 @@ class AgentHarness:
                 temperature=self.config.llm.temperature,
             )
 
-            # Track tokens
-            context.token_usage.add(response.input_tokens, response.output_tokens)
+            # Track tokens + cost
+            context.token_usage.add(
+                response.input_tokens, response.output_tokens,
+                cache_creation_input_tokens=response.cache_creation_input_tokens,
+                cache_read_input_tokens=response.cache_read_input_tokens,
+                cost_usd=response.cost_usd,
+            )
             context.iteration_count += 1
 
             if self.logger:
@@ -124,6 +131,9 @@ class AgentHarness:
                     response.output_tokens,
                     response.stop_reason,
                     response.has_tool_use,
+                    cache_creation_input_tokens=response.cache_creation_input_tokens,
+                    cache_read_input_tokens=response.cache_read_input_tokens,
+                    cost_usd=response.cost_usd,
                 )
 
             # Add assistant response to context
@@ -241,6 +251,9 @@ class AgentHarness:
             resolved=resolved,
             input_tokens=context.token_usage.input_tokens,
             output_tokens=context.token_usage.output_tokens,
+            cache_creation_input_tokens=context.token_usage.cache_creation_input_tokens,
+            cache_read_input_tokens=context.token_usage.cache_read_input_tokens,
+            cost_usd=context.token_usage.total_cost_usd,
             wall_clock_seconds=context.elapsed_seconds,
             tool_call_count=len(context.tool_calls),
             verification_count=context.verification_count,
