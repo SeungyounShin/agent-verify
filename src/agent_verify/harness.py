@@ -8,10 +8,10 @@ from typing import Any
 from agent_verify.benchmark.base import Task, TaskResult
 from agent_verify.config import (
     HarnessConfig,
+    LLMConfig,
     VerificationGranularity,
 )
 from agent_verify.context import Context, ToolCall
-from agent_verify.llm.anthropic import AnthropicClient
 from agent_verify.llm.base import LLMClient, LLMResponse
 from agent_verify.logging.logger import ExperimentLogger
 from agent_verify.recovery import create_recovery_strategy
@@ -34,7 +34,7 @@ class AgentHarness:
         logger: ExperimentLogger | None = None,
     ):
         self.config = config
-        self.llm_client: LLMClient = AnthropicClient(model=config.llm.model)
+        self.llm_client: LLMClient = _create_llm_client(config.llm)
         self.tools: ToolSet = create_default_toolset(config.workspace_dir)
         self.verifier: Verifier = create_verifier(config.verification_method)
         self.recovery: RecoveryStrategy = create_recovery_strategy(config.recovery_strategy)
@@ -261,3 +261,22 @@ class AgentHarness:
             iterations=context.iteration_count,
             completion_reason=context.completion_reason,
         )
+
+
+def _create_llm_client(llm_config: LLMConfig) -> LLMClient:
+    """Create LLM client based on provider config."""
+    provider = llm_config.provider
+
+    if provider == "anthropic":
+        from agent_verify.llm.anthropic import AnthropicClient
+        return AnthropicClient(model=llm_config.model)
+
+    if provider in ("openai", "vllm", "local"):
+        from agent_verify.llm.openai_compat import OpenAICompatClient
+        return OpenAICompatClient(
+            model=llm_config.model,
+            base_url=llm_config.base_url or "http://localhost:8000/v1",
+            api_key=llm_config.api_key or "dummy",
+        )
+
+    raise ValueError(f"Unknown LLM provider: {provider}")

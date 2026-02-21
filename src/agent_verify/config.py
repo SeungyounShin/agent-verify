@@ -35,6 +35,8 @@ class LLMConfig(BaseModel):
     model: str = "claude-sonnet-4-6"
     max_tokens: int = 8192
     temperature: float = 0.0
+    base_url: str | None = None   # For openai-compatible providers (vLLM, ollama, etc.)
+    api_key: str | None = None    # API key (defaults to env var or "dummy" for local)
 
 
 class HarnessConfig(BaseModel):

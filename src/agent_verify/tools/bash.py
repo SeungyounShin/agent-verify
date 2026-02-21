@@ -39,7 +39,28 @@ class BashTool(Tool):
             "required": ["command"],
         }
 
+    # Commands that can pollute the system python environment
+    _BLOCKED_PATTERNS = [
+        "pip install -e",
+        "pip install --editable",
+        "pip3 install -e",
+        "pip3 install --editable",
+        "python setup.py develop",
+        "python3 setup.py develop",
+        "python setup.py install",
+        "python3 setup.py install",
+    ]
+
     def execute(self, *, command: str, **kwargs: Any) -> str:
+        # Block commands that would pollute the system python
+        cmd_lower = command.lower().strip()
+        for pattern in self._BLOCKED_PATTERNS:
+            if pattern in cmd_lower:
+                return (
+                    f"Error: '{pattern}' is blocked to prevent system Python pollution. "
+                    f"Do not install packages globally. Modify source files directly instead."
+                )
+
         try:
             result = subprocess.run(
                 ["bash", "-c", command],

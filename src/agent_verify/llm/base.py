@@ -43,7 +43,7 @@ class LLMResponse:
 
     @property
     def text_content(self) -> str:
-        """Extract all text content from response."""
+        """Extract all text content from response (excludes reasoning blocks)."""
         parts = []
         for block in self.content:
             if block.get("type") == "text":
@@ -74,9 +74,9 @@ class LLMResponse:
         - cache_read_input_tokens: read from cache (billed at cache_read rate)
         - output_tokens: billed at output rate
         """
-        pricing = PRICING.get(self.model, PRICING.get("claude-sonnet-4-6", {}))
+        pricing = PRICING.get(self.model)
         if not pricing:
-            return 0.0
+            return 0.0  # No pricing info for this model (local/free)
         cost = (
             self.input_tokens * pricing["input"] / 1_000_000
             + self.output_tokens * pricing["output"] / 1_000_000

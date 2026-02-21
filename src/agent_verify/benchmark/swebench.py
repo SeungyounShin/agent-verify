@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -164,14 +165,17 @@ def evaluate_task(task: Task) -> dict[str, Any]:
     if not test_cmd:
         return {"resolved": False, "error": "No test command could be constructed"}
 
-    # Use clean env to avoid uv venv interference — the workspace
-    # repos need system Python with their own dependencies installed.
+    # Use clean env to avoid uv venv interference and cross-workspace
+    # pollution (e.g., pytest-dev workspace interfering with other tasks).
     import os
-    clean_env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+    clean_env = {k: v for k, v in os.environ.items()
+                 if k not in ("VIRTUAL_ENV", "PYTHONPATH")}
     clean_env["PATH"] = ":".join(
         p for p in os.environ.get("PATH", "").split(":")
         if ".venv" not in p
     )
+    # Ensure PYTHONDONTWRITEBYTECODE to avoid __pycache__ interference
+    clean_env["PYTHONDONTWRITEBYTECODE"] = "1"
 
     try:
         result = subprocess.run(
@@ -230,10 +234,12 @@ def _build_eval_command(task: Task) -> str:
                 for tf in test_files:
                     pytest_args.append(f"{tf}::{test_id}")
                     break  # Use first matching file
-        return f"python3 -m pytest {' '.join(pytest_args)} -x --tb=short"
+        quoted = ' '.join(shlex.quote(a) for a in pytest_args)
+        return f"python3 -m pytest {quoted} -x --tb=short"
 
     # Fallback: try using test IDs directly (might work if they're already paths)
-    return f"python3 -m pytest {' '.join(test_ids)} -x --tb=short -k '{' or '.join(test_ids)}'"
+    quoted = ' '.join(shlex.quote(a) for a in test_ids)
+    return f"python3 -m pytest {quoted} -x --tb=short"
 
 
 def _extract_files_from_patch(patch: str) -> list[str]:
@@ -268,8 +274,10 @@ def _build_test_command(data: dict[str, Any]) -> str:
                             for tf in test_files:
                                 pytest_args.append(f"{tf}::{test_id}")
                                 break
-                    return f"python3 -m pytest {' '.join(pytest_args)} -x --tb=short"
-                return f"python3 -m pytest {' '.join(test_ids)} -x --tb=short"
+                    quoted = ' '.join(shlex.quote(a) for a in pytest_args)
+                    return f"python3 -m pytest {quoted} -x --tb=short"
+                quoted = ' '.join(shlex.quote(a) for a in test_ids)
+                return f"python3 -m pytest {quoted} -x --tb=short"
         except json.JSONDecodeError:
             pass
     return ""

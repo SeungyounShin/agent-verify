@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -20,13 +21,15 @@ class ExperimentLogger:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.log_path = self.output_dir / f"{experiment_id}.jsonl"
         self._events: list[dict[str, Any]] = []
+        self._lock = threading.Lock()
 
     def _write_event(self, event: dict[str, Any]) -> None:
         event["experiment_id"] = self.experiment_id
         event["timestamp"] = time.time()
-        self._events.append(event)
-        with open(self.log_path, "a") as f:
-            f.write(json.dumps(event, default=str) + "\n")
+        with self._lock:
+            self._events.append(event)
+            with open(self.log_path, "a") as f:
+                f.write(json.dumps(event, default=str) + "\n")
 
     def log_run_start(self, task_id: str, config: dict[str, Any]) -> None:
         self._write_event({

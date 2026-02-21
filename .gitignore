@@ -6,4 +6,6 @@ __pycache__/
 dist/
 build/
 results/
+logs/
 .pytest_cache/
+*.jsonl

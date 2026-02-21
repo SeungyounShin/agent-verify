@@ -1,0 +1,49 @@
+experiment_id: "v0_baseline_10"
+benchmark: "swebench"
+num_trials: 1
+output_dir: "results/v0_vs_v2"
+seed: 42
+instance_ids:
+  - "django__django-16950"
+  - "sympy__sympy-19346"
+  - "scikit-learn__scikit-learn-14983"
+  - "matplotlib__matplotlib-24637"
+  - "pytest-dev__pytest-5631"
+  - "sphinx-doc__sphinx-10435"
+  - "pydata__xarray-6599"
+  - "astropy__astropy-14365"
+  - "psf__requests-2931"
+  - "pylint-dev__pylint-7277"
+
+harness:
+  llm:
+    provider: "anthropic"
+    model: "claude-sonnet-4-6"
+    max_tokens: 8192
+    temperature: 0.0
+  verification_method: "none"  # V0: no verification
+  verification_granularity: "task_end_only"
+  recovery_strategy: "retry_in_context"
+  max_iterations: 40
+  max_recovery_attempts: 3
+  max_tokens_budget: 500000
+  timeout_seconds: 600
+  workspace_dir: "/tmp/swebench-workspace"
+  system_prompt: |
+    You are a software engineering agent. You have tools to read files, write files,
+    edit files, and execute bash commands.
+
+    You are working in a Git repository that has a bug to fix.
+
+    ## Workflow
+    1. Understand the problem from the issue description
+    2. Find the relevant source files (use bash with find/grep)
+    3. Read the relevant code
+    4. Make the minimal fix using file_write or file_edit
+    5. State 'TASK_COMPLETE' when done
+
+    ## Rules
+    - Do NOT run pip install, setup.py install/develop, or any package installation
+    - Do NOT modify test files unless the bug is in the tests
+    - Make the smallest change that fixes the issue
+    - When you are done, you MUST say 'TASK_COMPLETE' in your final message

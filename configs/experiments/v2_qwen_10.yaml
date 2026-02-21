@@ -1,0 +1,55 @@
+experiment_id: "v2_qwen_10"
+benchmark: "swebench"
+num_trials: 1
+output_dir: "results/qwen_vs_claude"
+seed: 42
+instance_ids:
+  - "django__django-16950"
+  - "sympy__sympy-19346"
+  - "scikit-learn__scikit-learn-14983"
+  - "matplotlib__matplotlib-24637"
+  - "pytest-dev__pytest-5631"
+  - "sphinx-doc__sphinx-10435"
+  - "pydata__xarray-6599"
+  - "astropy__astropy-14365"
+  - "psf__requests-2931"
+  - "pylint-dev__pylint-7277"
+
+harness:
+  llm:
+    provider: "vllm"
+    model: "/raid/robin/models/Qwen3.5-397B-A17B-FP8"
+    base_url: "http://localhost:8000/v1"
+    api_key: "dummy"
+    max_tokens: 32768
+    temperature: 0.6
+  verification_method: "test_execution"
+  verification_granularity: "task_end_only"
+  recovery_strategy: "retry_in_context"
+  max_iterations: 40
+  max_recovery_attempts: 3
+  max_tokens_budget: 1000000
+  timeout_seconds: 1800
+  workspace_dir: "/tmp/swebench-workspace"
+  system_prompt: |
+    You are a software engineering agent. You have tools to read files, write files,
+    edit files, and execute bash commands.
+
+    You are working in a Git repository that has a bug to fix.
+
+    ## Workflow
+    1. Understand the problem from the issue description
+    2. Find the relevant source files (use bash with find/grep)
+    3. Read the relevant code
+    4. Make the minimal fix using file_write or file_edit
+    5. State 'TASK_COMPLETE' when done
+
+    ## Rules
+    - Do NOT run pip install, setup.py install/develop, or any package installation
+    - Do NOT modify test files unless the bug is in the tests
+    - Make the smallest change that fixes the issue
+    - When you are done, you MUST say 'TASK_COMPLETE' in your final message
+
+    ## Important
+    - Use the provided tools (file_read, file_write, file_edit, bash) to interact with the codebase
+    - Do NOT output raw JSON for tool calls - use the tools properly through the API

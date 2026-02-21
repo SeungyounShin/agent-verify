@@ -1,0 +1,154 @@
+{
+  "experiment_summary": {
+    "date": "2025-02-20",
+    "benchmark": "SWE-bench Verified",
+    "num_tasks": 10,
+    "evaluation": "Docker-based (swebench official images)",
+    "task_ids": [
+      "astropy__astropy-14365",
+      "django__django-16950",
+      "matplotlib__matplotlib-24637",
+      "psf__requests-2931",
+      "pydata__xarray-6599",
+      "pylint-dev__pylint-7277",
+      "pytest-dev__pytest-5631",
+      "scikit-learn__scikit-learn-14983",
+      "sphinx-doc__sphinx-10435",
+      "sympy__sympy-19346"
+    ]
+  },
+  "configurations": {
+    "claude_v0": {
+      "model": "claude-sonnet-4-6",
+      "provider": "anthropic",
+      "verification": "none",
+      "max_iterations": 40,
+      "max_tokens_budget": 500000,
+      "timeout_seconds": 600,
+      "temperature": 0.0
+    },
+    "claude_v2": {
+      "model": "claude-sonnet-4-6",
+      "provider": "anthropic",
+      "verification": "test_execution",
+      "recovery": "retry_in_context",
+      "max_recovery_attempts": 3,
+      "max_iterations": 40,
+      "max_tokens_budget": 500000,
+      "timeout_seconds": 600,
+      "temperature": 0.0
+    },
+    "qwen_v0": {
+      "model": "Qwen3.5-397B-A17B-FP8",
+      "provider": "vllm (H100x8 local)",
+      "verification": "none",
+      "max_iterations": 40,
+      "max_tokens_budget": 1000000,
+      "timeout_seconds": 1800,
+      "temperature": 0.6,
+      "interleaved_reasoning": true
+    },
+    "qwen_v2": {
+      "model": "Qwen3.5-397B-A17B-FP8",
+      "provider": "vllm (H100x8 local)",
+      "verification": "test_execution",
+      "recovery": "retry_in_context",
+      "max_recovery_attempts": 3,
+      "max_iterations": 40,
+      "max_tokens_budget": 1000000,
+      "timeout_seconds": 1800,
+      "temperature": 0.6,
+      "interleaved_reasoning": true
+    }
+  },
+  "results_overview": {
+    "claude_v0": {
+      "resolved": 6,
+      "total": 10,
+      "evaluated": 8,
+      "cost_usd": 1.8997,
+      "cache_hit_rate": 0.8245
+    },
+    "claude_v2": {
+      "resolved": 6,
+      "total": 10,
+      "evaluated": 8,
+      "cost_usd": 3.8651,
+      "cache_hit_rate": 0.9001
+    },
+    "qwen_v0": {
+      "resolved": 4,
+      "total": 10,
+      "evaluated": 8,
+      "cost_usd": 0.0
+    },
+    "qwen_v2": {
+      "resolved": 5,
+      "total": 10,
+      "evaluated": 9,
+      "cost_usd": 0.0
+    }
+  },
+  "per_task_results": {
+    "astropy__astropy-14365": {
+      "claude_v0": "UNRESOLVED",
+      "claude_v2": "RESOLVED",
+      "qwen_v0": "UNRESOLVED",
+      "qwen_v2": "UNRESOLVED"
+    },
+    "django__django-16950": {
+      "claude_v0": "RESOLVED",
+      "claude_v2": "EMPTY",
+      "qwen_v0": "UNRESOLVED",
+      "qwen_v2": "NO_PATCH"
+    },
+    "matplotlib__matplotlib-24637": {
+      "claude_v0": "RESOLVED",
+      "claude_v2": "RESOLVED",
+      "qwen_v0": "RESOLVED",
+      "qwen_v2": "RESOLVED"
+    },
+    "psf__requests-2931": {
+      "claude_v0": "UNRESOLVED",
+      "claude_v2": "UNRESOLVED",
+      "qwen_v0": "UNRESOLVED",
+      "qwen_v2": "RESOLVED"
+    },
+    "pydata__xarray-6599": {
+      "claude_v0": "RESOLVED",
+      "claude_v2": "RESOLVED",
+      "qwen_v0": "RESOLVED",
+      "qwen_v2": "UNRESOLVED"
+    },
+    "pylint-dev__pylint-7277": {
+      "claude_v0": "RESOLVED",
+      "claude_v2": "RESOLVED",
+      "qwen_v0": "RESOLVED",
+      "qwen_v2": "RESOLVED"
+    },
+    "pytest-dev__pytest-5631": {
+      "claude_v0": "EMPTY",
+      "claude_v2": "EMPTY",
+      "qwen_v0": "EMPTY",
+      "qwen_v2": "UNRESOLVED"
+    },
+    "scikit-learn__scikit-learn-14983": {
+      "claude_v0": "RESOLVED",
+      "claude_v2": "RESOLVED",
+      "qwen_v0": "UNRESOLVED",
+      "qwen_v2": "RESOLVED"
+    },
+    "sphinx-doc__sphinx-10435": {
+      "claude_v0": "NO_PATCH",
+      "claude_v2": "UNRESOLVED",
+      "qwen_v0": "NO_PATCH",
+      "qwen_v2": "UNRESOLVED"
+    },
+    "sympy__sympy-19346": {
+      "claude_v0": "RESOLVED",
+      "claude_v2": "RESOLVED",
+      "qwen_v0": "RESOLVED",
+      "qwen_v2": "RESOLVED"
+    }
+  }
+}
