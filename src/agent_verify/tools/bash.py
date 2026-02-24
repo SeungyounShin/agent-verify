@@ -19,11 +19,18 @@ class BashTool(Tool):
     def name(self) -> str:
         return "bash"
 
+    # Truncate output beyond this many characters
+    _MAX_OUTPUT_CHARS = 30000
+
     @property
     def description(self) -> str:
         return (
             "Execute a bash command in the workspace directory. "
-            "Use this for running tests, installing packages, git operations, etc."
+            "Use this for running tests, installing packages, git operations, "
+            "and other shell commands. "
+            "Do NOT use bash for: reading files (use file_read), searching file "
+            "contents (use grep), or finding files (use glob). "
+            "Output is truncated to 30,000 characters."
         )
 
     @property
@@ -76,7 +83,17 @@ class BashTool(Tool):
                 output += ("\n" if output else "") + result.stderr
             if result.returncode != 0:
                 output += f"\n[Exit code: {result.returncode}]"
-            return output if output else "[No output]"
+            if not output.strip():
+                return "Command executed successfully (no output)."
+            # Truncate long output
+            if len(output) > self._MAX_OUTPUT_CHARS:
+                half = self._MAX_OUTPUT_CHARS // 2
+                output = (
+                    output[:half]
+                    + f"\n\n... [truncated {len(output) - self._MAX_OUTPUT_CHARS} chars] ...\n\n"
+                    + output[-half:]
+                )
+            return output
         except subprocess.TimeoutExpired:
             return f"Error: Command timed out after {self.timeout} seconds"
         except Exception as e:

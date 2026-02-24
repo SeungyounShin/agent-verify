@@ -3,6 +3,8 @@
 from .base import Tool, ToolSet
 from .bash import BashTool
 from .file_ops import FileEditTool, FileReadTool, FileWriteTool
+from .grep import GrepTool
+from .glob import GlobTool
 
 
 def create_default_toolset(workspace_dir: str = "/tmp/agent-workspace") -> ToolSet:
@@ -12,4 +14,6 @@ def create_default_toolset(workspace_dir: str = "/tmp/agent-workspace") -> ToolS
         FileWriteTool(workspace_dir),
         FileEditTool(workspace_dir),
         BashTool(workspace_dir),
+        GrepTool(workspace_dir),
+        GlobTool(workspace_dir),
     ])

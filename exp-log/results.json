@@ -374,5 +374,76 @@
       "sqlfluff__sqlfluff-1763": {"result": "UNRESOLVED", "steps": 78, "tokens": 3665805},
       "sqlfluff__sqlfluff-2419": {"result": "RESOLVED", "steps": 25, "tokens": 373364}
     }
+  },
+  "experiment_6_enhanced_aci": {
+    "date": "2025-02-24",
+    "benchmark": "SWE-bench Lite",
+    "split": "dev",
+    "num_tasks": 23,
+    "num_ran": 23,
+    "model": "Qwen3.5-397B-A17B-FP8",
+    "config": {
+      "verification": "none",
+      "max_steps": 2000,
+      "timeout_seconds": "none",
+      "temperature": 0.6,
+      "max_context": 131072,
+      "compaction_threshold": "75% of 131072 (98304 input tokens)",
+      "compaction_triggered": 0,
+      "task_context": "workspace_dir + task_id in user message",
+      "tools": ["file_read (windowed+line numbers)", "file_write", "file_edit (lint-gated)", "bash (30K truncation)", "grep (NEW, ripgrep)", "glob (NEW, pathlib)"],
+      "system_prompt": "enhanced with tool usage guidelines, read-before-edit, search strategy, test-after-edit"
+    },
+    "results_overview": {
+      "resolved": 6,
+      "total": 23,
+      "resolve_pct": 26.1,
+      "agent_declared": 22,
+      "llm_error": 1,
+      "max_steps_hit": 0,
+      "total_tokens": 38253568,
+      "cost_usd": 0.0
+    },
+    "resolved_ids": [
+      "marshmallow-code__marshmallow-1343",
+      "marshmallow-code__marshmallow-1359",
+      "pvlib__pvlib-python-1606",
+      "pydicom__pydicom-1256",
+      "pydicom__pydicom-1694",
+      "sqlfluff__sqlfluff-2419"
+    ],
+    "new_vs_all_previous": [
+      "pvlib__pvlib-python-1606"
+    ],
+    "regressions_vs_exp5": [
+      "pylint-dev__astroid-1196",
+      "sqlfluff__sqlfluff-1517",
+      "sqlfluff__sqlfluff-1733"
+    ],
+    "per_task_results": {
+      "marshmallow-code__marshmallow-1343": {"result": "RESOLVED", "steps": 48, "tokens": 827422},
+      "marshmallow-code__marshmallow-1359": {"result": "RESOLVED", "steps": 53, "tokens": 1111787},
+      "pvlib__pvlib-python-1072": {"result": "UNRESOLVED", "steps": 32, "tokens": 570509},
+      "pvlib__pvlib-python-1154": {"result": "UNRESOLVED", "steps": 34, "tokens": 523597},
+      "pvlib__pvlib-python-1606": {"result": "RESOLVED", "steps": 59, "tokens": 1996479},
+      "pvlib__pvlib-python-1707": {"result": "UNRESOLVED", "steps": 60, "tokens": 1640015},
+      "pvlib__pvlib-python-1854": {"result": "UNRESOLVED", "steps": 39, "tokens": 723570},
+      "pydicom__pydicom-901": {"result": "UNRESOLVED", "steps": 27, "tokens": 284052},
+      "pydicom__pydicom-1139": {"result": "UNRESOLVED", "steps": 15, "tokens": 148885},
+      "pydicom__pydicom-1256": {"result": "RESOLVED", "steps": 24, "tokens": 383378},
+      "pydicom__pydicom-1413": {"result": "UNRESOLVED", "steps": 72, "tokens": 1832466},
+      "pydicom__pydicom-1694": {"result": "RESOLVED", "steps": 16, "tokens": 101785},
+      "pylint-dev__astroid-1196": {"result": "UNRESOLVED", "steps": 46, "tokens": 842008},
+      "pylint-dev__astroid-1268": {"result": "UNRESOLVED", "steps": 43, "tokens": 772592},
+      "pylint-dev__astroid-1333": {"result": "UNRESOLVED", "steps": 130, "tokens": 5874184},
+      "pylint-dev__astroid-1866": {"result": "UNRESOLVED", "steps": 30, "tokens": 332511},
+      "pylint-dev__astroid-1978": {"result": "UNRESOLVED", "steps": 38, "tokens": 513433},
+      "pyvista__pyvista-4315": {"result": "UNRESOLVED", "steps": 19, "tokens": 259029},
+      "sqlfluff__sqlfluff-1517": {"result": "UNRESOLVED", "steps": 111, "tokens": 4282844},
+      "sqlfluff__sqlfluff-1625": {"result": "UNRESOLVED", "steps": 140, "tokens": 6087551},
+      "sqlfluff__sqlfluff-1733": {"result": "LLM_ERROR", "steps": 129, "tokens": 5720704},
+      "sqlfluff__sqlfluff-1763": {"result": "UNRESOLVED", "steps": 136, "tokens": 4583015},
+      "sqlfluff__sqlfluff-2419": {"result": "RESOLVED", "steps": 57, "tokens": 817437}
+    }
   }
 }

@@ -56,6 +56,10 @@ class OpenAICompatClient(LLMClient):
             "messages": oai_messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
+            "top_p": 0.95,
+            "extra_body": {
+                "top_k": 20,
+            },
         }
 
         if tools:

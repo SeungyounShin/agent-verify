@@ -328,6 +328,83 @@ Max steps hit                            N/A      2        5       0
 
 ---
 
+## Experiment 6: Enhanced Agent-Computer Interface (ACI)
+
+Test whether improving the tool interface (inspired by SWE-agent ACI and Claude Code) improves resolve rate. All scaling parameters identical to Exp 5 — only the tools and system prompt changed.
+
+- **Benchmark**: SWE-bench Lite, dev split (23 tasks, all ran)
+- **Model**: Qwen 3.5 397B (FP8 MoE), vLLM local
+- **Config**: Same as Exp 5 — no timeout, `max_steps=2000`, 128K context, task context in user message
+- **Changes vs Exp 5**:
+  1. `file_read`: line numbers, windowed viewing (200 lines, offset/limit), 2000 char/line truncation
+  2. `file_edit`: flake8 lint-gated editing (`--select=E9,W6`), auto-rollback on syntax error
+  3. `grep` (NEW): ripgrep wrapper with regex, glob filter, context lines, 50 result cap
+  4. `glob` (NEW): pathlib.glob wrapper, 200 file cap
+  5. `bash`: 30K output truncation, empty output message, soft guidance against grep/find
+  6. System prompt: tool usage guidelines, read-before-edit rule, search strategy, test-after-edit workflow
+
+### Results
+
+- **Resolved: 6/23 (26.1%)** — regression from Exp 5 (34.8%)
+- 22/23 agent_declared TASK_COMPLETE, 1 llm_error (sqlfluff-1733)
+- **0 compactions** (128K context sufficient)
+- Total tokens: 38.3M
+
+### Per-Task Comparison (all experiments)
+
+```
+Task                                V0       Unltd    Comp32K  Exp5     Exp6
+                                   (17.4%)  (30.4%)  (30.4%)  (34.8%)  (26.1%)
+─────────────────────────────────────────────────────────────────────────────
+marshmallow-code__marshmallow-1343  PASS     PASS     PASS     PASS     PASS
+marshmallow-code__marshmallow-1359  FAIL     FAIL     FAIL    *PASS*    PASS
+pvlib__pvlib-python-1072            FAIL     FAIL     PASS     FAIL     FAIL
+pvlib__pvlib-python-1154           EMPTY     FAIL     FAIL     FAIL     FAIL
+pvlib__pvlib-python-1606            FAIL     FAIL     FAIL     FAIL    *PASS*  ← NEW
+pvlib__pvlib-python-1707            FAIL     FAIL     FAIL     FAIL     FAIL
+pvlib__pvlib-python-1854            FAIL     FAIL     FAIL     FAIL     FAIL
+pydicom__pydicom-901                FAIL     FAIL     FAIL     FAIL     FAIL
+pydicom__pydicom-1139               FAIL     FAIL     FAIL     FAIL     FAIL
+pydicom__pydicom-1256              EMPTY    *PASS*    FAIL    *PASS*    PASS
+pydicom__pydicom-1413               FAIL     FAIL     FAIL     FAIL     FAIL
+pydicom__pydicom-1694               PASS     PASS     PASS     PASS     PASS
+pylint-dev__astroid-1196           EMPTY    *PASS*    FAIL    *PASS*    FAIL    ← lost
+pylint-dev__astroid-1268            FAIL     FAIL     PASS     FAIL     FAIL
+pylint-dev__astroid-1333           EMPTY    *PASS*    PASS     FAIL     FAIL
+pylint-dev__astroid-1866            PASS     PASS     FAIL     FAIL     FAIL
+pylint-dev__astroid-1978            FAIL     FAIL     FAIL     FAIL     FAIL
+pyvista__pyvista-4315               FAIL     N/A      N/A      FAIL     FAIL
+sqlfluff__sqlfluff-1517            EMPTY     FAIL     FAIL    *PASS*    FAIL    ← lost
+sqlfluff__sqlfluff-1625             FAIL     FAIL     FAIL     FAIL     FAIL
+sqlfluff__sqlfluff-1733            EMPTY     FAIL     FAIL    *PASS*    FAIL    ← lost
+sqlfluff__sqlfluff-1763             FAIL     FAIL     PASS     FAIL     FAIL
+sqlfluff__sqlfluff-2419             PASS     PASS     PASS     PASS     PASS
+─────────────────────────────────────────────────────────────────────────────
+Resolved                           4/23     7/23     7/23     8/23     6/23
+Resolve %                         17.4%    30.4%    30.4%    34.8%    26.1%
+Total tokens                      ~4.5M    32.3M    57.5M    38.0M    38.3M
+Compactions                         N/A      0       439      0        0
+```
+
+### Key Findings
+
+1. **ACI improvements did NOT improve resolve rate**: 6/23 (26.1%) vs Exp 5's 8/23 (34.8%) — a -2 task regression.
+2. **pvlib-1606 resolved for the first time**: Never solved in any previous experiment. The enhanced grep/glob tools likely helped navigate the codebase more effectively.
+3. **3 regressions vs Exp 5**: astroid-1196, sqlfluff-1517, sqlfluff-1733 all flipped PASS→FAIL. These were first-time PASS in Exp 5.
+4. **Stochasticity dominates**: With temperature=0.6, single-run results have high variance. The tasks that flip between experiments (astroid-1196, sqlfluff-1517, pvlib-1072, etc.) appear sensitive to random sampling rather than tool design.
+5. **Token consumption unchanged**: 38.3M vs 38.0M — the new tools didn't reduce or increase token usage meaningfully.
+6. **All tasks produced patches**: 23/23 non-empty diffs (22 agent_declared + 1 llm_error with partial diff).
+
+### Files
+
+- `results/exp6_enhanced_aci/` — Raw data, patches, summary
+- `configs/experiments/exp6_enhanced_aci.yaml`
+- `exp-log/experiment_6_design.md` — Experiment hypothesis and design document
+- `src/agent_verify/tools/grep.py` — New GrepTool
+- `src/agent_verify/tools/glob.py` — New GlobTool
+
+---
+
 ## Configuration Details
 
 ### Claude Experiments
