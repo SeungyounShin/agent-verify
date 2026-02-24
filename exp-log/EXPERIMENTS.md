@@ -253,6 +253,81 @@ Compactions                                N/A          0           439
 
 ---
 
+## Experiment 5: 128K Context + Task Context + Max Steps 2000
+
+Addressed issues from Experiment 4: raised compaction threshold to actual vLLM max_model_len (128K), increased max steps from 500 to 2000, and added explicit workspace directory + task ID to the user message to prevent task confusion after compaction.
+
+- **Benchmark**: SWE-bench Lite, dev split (23 tasks, all ran including pyvista-4315)
+- **Model**: Qwen 3.5 397B (FP8 MoE), vLLM local
+- **Config**: No timeout, `max_steps=2000`, compaction threshold 75% of 131,072 = 98,304 input tokens
+- **Changes vs Exp 4**:
+  1. `max_context`: 32K → 131K (actual vLLM max_model_len)
+  2. `MAX_STEPS`: 500 → 2000
+  3. Task message now includes: `"You are working in the repository at: {workspace_dir}\nTask ID: {task_id}"`
+
+### Results
+
+- **Resolved: 8/23 (34.8%)** — best result across all experiments
+- 20/23 agent_declared TASK_COMPLETE, 3 llm_error
+- **0 compactions** (128K context sufficient for all tasks)
+- 0 max_steps hits (2000 limit never reached)
+- Total tokens: 38.0M
+
+### Per-Task Comparison (all experiments)
+
+```
+Task                                     V0       Unltd    Comp32K  128K+ctx
+                                        (17.4%)  (30.4%)  (30.4%)  (34.8%)
+─────────────────────────────────────────────────────────────────────────────
+marshmallow-code__marshmallow-1343       PASS      PASS     PASS     PASS
+marshmallow-code__marshmallow-1359       FAIL      FAIL     FAIL    *PASS*  ← NEW
+pvlib__pvlib-python-1072                 FAIL      FAIL     PASS     FAIL
+pvlib__pvlib-python-1154               EMPTY      FAIL     FAIL     FAIL   (llm_error)
+pvlib__pvlib-python-1606                 FAIL      FAIL     FAIL     FAIL
+pvlib__pvlib-python-1707                 FAIL      FAIL     FAIL     FAIL
+pvlib__pvlib-python-1854                 FAIL      FAIL     FAIL     FAIL
+pydicom__pydicom-901                     FAIL      FAIL     FAIL     FAIL
+pydicom__pydicom-1139                    FAIL      FAIL     FAIL     FAIL
+pydicom__pydicom-1256                  EMPTY     *PASS*    FAIL    *PASS*
+pydicom__pydicom-1413                    FAIL      FAIL     FAIL     FAIL   (llm_error)
+pydicom__pydicom-1694                    PASS      PASS     PASS     PASS
+pylint-dev__astroid-1196               EMPTY     *PASS*    FAIL    *PASS*
+pylint-dev__astroid-1268                 FAIL      FAIL     PASS     FAIL
+pylint-dev__astroid-1333               EMPTY     *PASS*    PASS     FAIL
+pylint-dev__astroid-1866                 PASS      PASS     FAIL     FAIL
+pylint-dev__astroid-1978                 FAIL      FAIL     FAIL     FAIL
+pyvista__pyvista-4315                    FAIL      N/A      N/A      FAIL
+sqlfluff__sqlfluff-1517                EMPTY      FAIL     FAIL    *PASS*  ← NEW
+sqlfluff__sqlfluff-1625                  FAIL      FAIL     FAIL     FAIL
+sqlfluff__sqlfluff-1733                EMPTY      FAIL     FAIL    *PASS*  ← NEW
+sqlfluff__sqlfluff-1763                  FAIL      FAIL     PASS     FAIL
+sqlfluff__sqlfluff-2419                  PASS      PASS     PASS     PASS
+─────────────────────────────────────────────────────────────────────────────
+Resolved                                4/23     7/23     7/23     8/23
+Resolve %                              17.4%    30.4%    30.4%    34.8%
+Total tokens                           ~4.5M    32.3M    57.5M    38.0M
+Compactions                              N/A      0       439      0
+Max steps hit                            N/A      2        5       0
+```
+
+### Key Findings
+
+1. **Best resolve rate: 8/23 (34.8%)** — task context + higher step limit produced 3 tasks never solved before (marshmallow-1359, sqlfluff-1517, sqlfluff-1733).
+2. **Task context matters**: Adding workspace dir and task ID to user message prevented task confusion that plagued Experiment 4.
+3. **No compaction needed at 128K**: All tasks completed within the 128K context window without compaction. Max input tokens stayed below 98K threshold.
+4. **No max_steps hits**: 2000 step limit was never reached. Longest task was sqlfluff-1733 at 126 steps before llm_error.
+5. **Variance across runs**: Some tasks resolve inconsistently across experiments (e.g., astroid-1333 resolved in Exp 3/4 but not here; pvlib-1072 resolved in Exp 4 but not here). This suggests model stochasticity (temperature=0.6) plays a role.
+6. **Persistent failures**: pvlib family (1154, 1606, 1707, 1854), pydicom-901/1139, astroid-1978 failed in ALL experiments — these are fundamentally hard for this model.
+
+### Files
+
+- `results/compaction_128k/` — Raw data, patches, summary
+- `results/compaction_128k/compaction_128k_qwen_lite_dev_summary.json`
+- `compaction_128k.compaction_128k.json` — Docker eval report
+- `configs/experiments/compaction_128k_qwen_lite_dev.yaml`
+
+---
+
 ## Configuration Details
 
 ### Claude Experiments

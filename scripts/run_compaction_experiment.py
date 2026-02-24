@@ -45,8 +45,8 @@ from agent_verify.tools import create_default_toolset
 # Constants
 # ---------------------------------------------------------------------------
 COMPACTION_THRESHOLD_RATIO = 0.75  # compact when input_tokens > 75% of max_context
-DEFAULT_MAX_CONTEXT = 32768        # vLLM max_model_len
-MAX_STEPS = 500                    # absolute safety cap on LLM calls per task
+DEFAULT_MAX_CONTEXT = 131072       # vLLM max_model_len
+MAX_STEPS = 2000                   # absolute safety cap on LLM calls per task
 
 COMPACTION_PROMPT = """\
 Your task is to create a detailed summary of the conversation so far, \
@@ -156,12 +156,19 @@ def run_task(
     last_input_tokens = 0
     completion_reason = ""
 
+    # Build task message with workspace context
+    task_msg = (
+        f"You are working in the repository at: {task.workspace_dir}\n"
+        f"Task ID: {task.task_id}\n\n"
+        f"{task.description}"
+    )
+
     # Current system prompt (may grow with compaction summaries)
     system_prompt = base_prompt
 
     # Fresh context
     ctx = Context()
-    ctx.add_user_message(task.description)
+    ctx.add_user_message(task_msg)
 
     for step in range(MAX_STEPS):
         # --- Auto-compaction ---
@@ -189,7 +196,7 @@ def run_task(
                 n=compactions, summary=summary,
             )
             ctx = Context()
-            ctx.add_user_message(task.description)
+            ctx.add_user_message(task_msg)
             last_input_tokens = 0  # reset after compaction
             print(f"{tag} Compaction #{compactions} done ({len(summary)} chars)")
 
