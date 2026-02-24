@@ -150,5 +150,161 @@
       "qwen_v0": "RESOLVED",
       "qwen_v2": "RESOLVED"
     }
+  },
+  "experiment_2_lite_dev_v0": {
+    "date": "2025-02-23",
+    "benchmark": "SWE-bench Lite",
+    "split": "dev",
+    "num_tasks": 23,
+    "model": "Qwen3.5-397B-A17B-FP8",
+    "config": {
+      "verification": "none",
+      "max_iterations": 40,
+      "max_tokens_budget": 1000000,
+      "timeout_seconds": 1800,
+      "temperature": 0.6
+    },
+    "results_overview": {
+      "resolved": 4,
+      "total": 23,
+      "evaluated": 17,
+      "resolve_pct": 17.4,
+      "cost_usd": 0.0
+    },
+    "resolved_ids": [
+      "marshmallow-code__marshmallow-1343",
+      "pydicom__pydicom-1694",
+      "pylint-dev__astroid-1866",
+      "sqlfluff__sqlfluff-2419"
+    ]
+  },
+  "experiment_3_unlimited_budget": {
+    "date": "2025-02-23",
+    "benchmark": "SWE-bench Lite",
+    "split": "dev",
+    "num_tasks": 23,
+    "num_ran": 22,
+    "model": "Qwen3.5-397B-A17B-FP8",
+    "config": {
+      "verification": "none",
+      "max_iterations": "none (500 safety cap)",
+      "max_tokens_budget": "none",
+      "timeout_seconds": 3600,
+      "temperature": 0.6,
+      "compaction_threshold": "75% of 131072 (98304 input tokens)",
+      "compaction_triggered": 0
+    },
+    "results_overview": {
+      "resolved": 7,
+      "total": 23,
+      "evaluated": 22,
+      "resolve_pct": 30.4,
+      "total_tokens": 32265701,
+      "cost_usd": 0.0
+    },
+    "resolved_ids": [
+      "marshmallow-code__marshmallow-1343",
+      "pydicom__pydicom-1256",
+      "pydicom__pydicom-1694",
+      "pylint-dev__astroid-1196",
+      "pylint-dev__astroid-1333",
+      "pylint-dev__astroid-1866",
+      "sqlfluff__sqlfluff-2419"
+    ],
+    "new_vs_v0": [
+      "pydicom__pydicom-1256",
+      "pylint-dev__astroid-1196",
+      "pylint-dev__astroid-1333"
+    ],
+    "per_task_results": {
+      "marshmallow-code__marshmallow-1343": {"v0": "RESOLVED", "unlimited": "RESOLVED"},
+      "marshmallow-code__marshmallow-1359": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "pvlib__pvlib-python-1072": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "pvlib__pvlib-python-1154": {"v0": "EMPTY", "unlimited": "UNRESOLVED"},
+      "pvlib__pvlib-python-1606": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "pvlib__pvlib-python-1707": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "pvlib__pvlib-python-1854": {"v0": "UNRESOLVED", "unlimited": "LLM_ERROR"},
+      "pydicom__pydicom-901": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "pydicom__pydicom-1139": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "pydicom__pydicom-1256": {"v0": "EMPTY", "unlimited": "RESOLVED"},
+      "pydicom__pydicom-1413": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "pydicom__pydicom-1694": {"v0": "RESOLVED", "unlimited": "RESOLVED"},
+      "pylint-dev__astroid-1196": {"v0": "EMPTY", "unlimited": "RESOLVED"},
+      "pylint-dev__astroid-1268": {"v0": "UNRESOLVED", "unlimited": "LLM_ERROR"},
+      "pylint-dev__astroid-1333": {"v0": "EMPTY", "unlimited": "RESOLVED"},
+      "pylint-dev__astroid-1866": {"v0": "RESOLVED", "unlimited": "RESOLVED"},
+      "pylint-dev__astroid-1978": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "pyvista__pyvista-4315": {"v0": "UNRESOLVED", "unlimited": "PROVISION_FAIL"},
+      "sqlfluff__sqlfluff-1517": {"v0": "EMPTY", "unlimited": "TIMEOUT"},
+      "sqlfluff__sqlfluff-1625": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "sqlfluff__sqlfluff-1733": {"v0": "EMPTY", "unlimited": "TIMEOUT"},
+      "sqlfluff__sqlfluff-1763": {"v0": "UNRESOLVED", "unlimited": "UNRESOLVED"},
+      "sqlfluff__sqlfluff-2419": {"v0": "RESOLVED", "unlimited": "RESOLVED"}
+    }
+  },
+  "experiment_4_compaction_32k": {
+    "date": "2025-02-24",
+    "benchmark": "SWE-bench Lite",
+    "split": "dev",
+    "num_tasks": 23,
+    "num_ran": 22,
+    "model": "Qwen3.5-397B-A17B-FP8",
+    "config": {
+      "verification": "none",
+      "max_iterations": "none (500 safety cap)",
+      "max_tokens_budget": "none",
+      "timeout_seconds": "none",
+      "temperature": 0.6,
+      "max_context": 32768,
+      "compaction_threshold": "75% of 32768 (24576 input tokens)",
+      "compaction_prompt": "detailed summary preserving accomplishments, WIP, files, next steps, constraints"
+    },
+    "results_overview": {
+      "resolved": 7,
+      "total": 23,
+      "evaluated": 22,
+      "resolve_pct": 30.4,
+      "total_tokens": 57507651,
+      "total_compactions": 439,
+      "cost_usd": 0.0
+    },
+    "resolved_ids": [
+      "marshmallow-code__marshmallow-1343",
+      "pvlib__pvlib-python-1072",
+      "pydicom__pydicom-1694",
+      "pylint-dev__astroid-1268",
+      "pylint-dev__astroid-1333",
+      "sqlfluff__sqlfluff-1763",
+      "sqlfluff__sqlfluff-2419"
+    ],
+    "new_vs_unlimited": {
+      "gained": ["pvlib__pvlib-python-1072", "pylint-dev__astroid-1268", "sqlfluff__sqlfluff-1763"],
+      "lost": ["pydicom__pydicom-1256", "pylint-dev__astroid-1196", "pylint-dev__astroid-1866"]
+    },
+    "per_task_results": {
+      "marshmallow-code__marshmallow-1343": {"result": "RESOLVED", "compactions": 3, "steps": 52},
+      "marshmallow-code__marshmallow-1359": {"result": "UNRESOLVED", "compactions": 5, "steps": 61},
+      "pvlib__pvlib-python-1072": {"result": "RESOLVED", "compactions": 0, "steps": 11},
+      "pvlib__pvlib-python-1154": {"result": "UNRESOLVED", "compactions": 41, "steps": 119},
+      "pvlib__pvlib-python-1606": {"result": "UNRESOLVED", "compactions": 2, "steps": 49},
+      "pvlib__pvlib-python-1707": {"result": "UNRESOLVED", "compactions": 2, "steps": 56},
+      "pvlib__pvlib-python-1854": {"result": "UNRESOLVED", "compactions": 54, "steps": 133},
+      "pydicom__pydicom-901": {"result": "UNRESOLVED", "compactions": 0, "steps": 29},
+      "pydicom__pydicom-1139": {"result": "UNRESOLVED", "compactions": 0, "steps": 19},
+      "pydicom__pydicom-1256": {"result": "MAX_STEPS", "compactions": 44, "steps": 500},
+      "pydicom__pydicom-1413": {"result": "UNRESOLVED", "compactions": 3, "steps": 36},
+      "pydicom__pydicom-1694": {"result": "RESOLVED", "compactions": 41, "steps": 117},
+      "pylint-dev__astroid-1196": {"result": "MAX_STEPS", "compactions": 131, "steps": 500},
+      "pylint-dev__astroid-1268": {"result": "RESOLVED", "compactions": 0, "steps": 27},
+      "pylint-dev__astroid-1333": {"result": "RESOLVED", "compactions": 2, "steps": 76},
+      "pylint-dev__astroid-1866": {"result": "UNRESOLVED", "compactions": 2, "steps": 31},
+      "pylint-dev__astroid-1978": {"result": "UNRESOLVED", "compactions": 0, "steps": 19},
+      "pyvista__pyvista-4315": {"result": "PROVISION_FAIL", "compactions": 0, "steps": 0},
+      "sqlfluff__sqlfluff-1517": {"result": "MAX_STEPS", "compactions": 52, "steps": 500},
+      "sqlfluff__sqlfluff-1625": {"result": "MAX_STEPS", "compactions": 12, "steps": 500},
+      "sqlfluff__sqlfluff-1733": {"result": "MAX_STEPS", "compactions": 20, "steps": 500},
+      "sqlfluff__sqlfluff-1763": {"result": "RESOLVED", "compactions": 25, "steps": 432},
+      "sqlfluff__sqlfluff-2419": {"result": "RESOLVED", "compactions": 0, "steps": 37}
+    }
   }
 }

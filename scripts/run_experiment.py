@@ -64,6 +64,22 @@ def _run_single(
             error=str(e),
         )
 
+    # Save diff from workspace
+    try:
+        diff_dir = Path(config.output_dir) / "patches"
+        diff_dir.mkdir(parents=True, exist_ok=True)
+        import subprocess
+        diff_result = subprocess.run(
+            ["git", "diff", "HEAD"],
+            cwd=task.workspace_dir, capture_output=True, text=True,
+        )
+        diff_path = diff_dir / f"{task.task_id}.diff"
+        diff_path.write_text(diff_result.stdout)
+        if diff_result.stdout.strip():
+            print(f"{tag}: Saved patch ({len(diff_result.stdout)} bytes)")
+    except Exception as e:
+        print(f"{tag}: WARNING: Could not save diff: {e}")
+
     # Print progress
     total_in = result.input_tokens + result.cache_creation_input_tokens + result.cache_read_input_tokens
     cache_pct = (result.cache_read_input_tokens / total_in * 100) if total_in else 0
@@ -81,9 +97,13 @@ async def run_experiment_async(config: ExperimentConfig, max_parallel: int = 10)
 
     # Load tasks
     if config.benchmark == "swebench":
-        print("Loading SWE-bench Verified dataset...")
+        print(f"Loading {config.dataset_name} ({config.split})...")
         instance_ids = config.instance_ids if config.instance_ids else None
-        tasks = load_swebench_tasks(split="test", instance_ids=instance_ids)
+        tasks = load_swebench_tasks(
+            split=config.split,
+            instance_ids=instance_ids,
+            dataset_name=config.dataset_name,
+        )
         if not tasks:
             print("No tasks loaded.")
             return []

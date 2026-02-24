@@ -53,7 +53,8 @@ def _is_test_file(filepath: str) -> bool:
     # Common test file patterns
     if basename.startswith('test_') or basename.endswith('_test.py'):
         return True
-    if 'tests/' in filepath or 'test/' in filepath or 'testing/' in filepath:
+    # Check for test directories as path components (not substrings)
+    if any(p in ('tests', 'test', 'testing') for p in parts[:-1]):
         return True
     if basename == 'conftest.py':
         return True
@@ -110,6 +111,8 @@ def main():
     parser.add_argument("--timeout", type=int, default=900, help="Per-instance timeout (s)")
     parser.add_argument("--instance-ids", nargs="+", help="Specific instance IDs to evaluate")
     parser.add_argument("--report-dir", default="results/v0_vs_v2/docker_eval", help="Output dir")
+    parser.add_argument("--dataset", default="princeton-nlp/SWE-bench_Verified", help="HuggingFace dataset name")
+    parser.add_argument("--split", default="test", help="Dataset split")
     args = parser.parse_args()
 
     # Discover instance IDs from patch files if not specified
@@ -138,8 +141,8 @@ def main():
     print(f"{'='*60}\n")
 
     run_evaluation(
-        dataset_name="princeton-nlp/SWE-bench_Verified",
-        split="test",
+        dataset_name=args.dataset,
+        split=args.split,
         instance_ids=instance_ids,
         predictions_path=pred_path,
         max_workers=args.max_workers,

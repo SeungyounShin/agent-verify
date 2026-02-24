@@ -63,6 +63,8 @@ class ExperimentConfig(BaseModel):
     experiment_id: str
     harness: HarnessConfig = Field(default_factory=HarnessConfig)
     benchmark: str = "swebench"
+    dataset_name: str = "princeton-nlp/SWE-bench_Verified"
+    split: str = "test"
     instance_ids: list[str] = Field(default_factory=list)
     num_trials: int = 3
     output_dir: str = "results"

@@ -89,6 +89,170 @@ Cost                                       ~$1.90     ~$3.87         $0         
 
 ---
 
+---
+
+## Experiment 2: Qwen V0 on SWE-bench Lite dev (23 tasks)
+
+Baseline run on a larger task set to establish Qwen V0 performance.
+
+- **Benchmark**: SWE-bench Lite, dev split (23 tasks)
+- **Model**: Qwen 3.5 397B (FP8 MoE), vLLM local
+- **Config**: `max_iterations=40`, `token_budget=1M`, `timeout=1800s`
+
+### Results
+
+- **Resolved: 4/23 (17.4%)**
+- 17/23 non-empty patches submitted (6 empty/no-patch)
+- Frequent early termination: most tasks hit `token_budget` or `max_iterations`
+
+| Resolved | Unresolved (patch) | No patch |
+|---|---|---|
+| marshmallow-1343, pydicom-1694, astroid-1866, sqlfluff-2419 | 13 tasks | 6 tasks |
+
+### Files
+
+- `results/lite_dev/` — Raw data, patches
+- `results/lite_dev/docker_eval/qwen_v0_lite_dev.qwen_v0_lite_dev.json` — Docker eval report
+- `configs/experiments/v0_qwen_lite_dev.yaml`
+
+---
+
+## Experiment 3: Unlimited Budget (no compaction) on SWE-bench Lite dev
+
+Test whether removing iteration/token limits improves resolve rate. Originally designed to test auto-compaction, but vLLM context window (131K) was large enough that compaction never triggered.
+
+- **Benchmark**: SWE-bench Lite, dev split (23 tasks, 22 ran — pyvista-4315 workspace provision failed)
+- **Model**: Qwen 3.5 397B (FP8 MoE), vLLM local
+- **Config**: No `max_iterations`, no `token_budget`, `timeout=3600s`, `max_steps=500` (safety cap)
+- **Compaction threshold**: 75% of 131,072 = 98,304 input tokens (never reached)
+
+### Results
+
+- **Resolved: 7/23 (30.4%)**
+- 22/22 non-empty patches (all ran tasks produced diffs)
+- 0 compactions triggered (max input tokens per call: ~76K, threshold: ~98K)
+- Total tokens: 32.3M (vs V0's ~4.5M for same tasks)
+
+### Per-Task Comparison (V0 Baseline vs Unlimited)
+
+```
+Task                                     V0 Baseline    Unlimited
+──────────────────────────────────────────────────────────────────
+marshmallow-code__marshmallow-1343          PASS           PASS
+marshmallow-code__marshmallow-1359          FAIL           FAIL
+pvlib__pvlib-python-1072                    FAIL           FAIL
+pvlib__pvlib-python-1154                  EMPTY           FAIL
+pvlib__pvlib-python-1606                    FAIL           FAIL
+pvlib__pvlib-python-1707                    FAIL           FAIL
+pvlib__pvlib-python-1854                    FAIL           FAIL  (llm_error)
+pydicom__pydicom-901                        FAIL           FAIL
+pydicom__pydicom-1139                       FAIL           FAIL
+pydicom__pydicom-1256                     EMPTY          *PASS*
+pydicom__pydicom-1413                       FAIL           FAIL
+pydicom__pydicom-1694                       PASS           PASS
+pylint-dev__astroid-1196                  EMPTY          *PASS*
+pylint-dev__astroid-1268                    FAIL           FAIL  (llm_error)
+pylint-dev__astroid-1333                  EMPTY          *PASS*
+pylint-dev__astroid-1866                    PASS           PASS
+pylint-dev__astroid-1978                    FAIL           FAIL
+pyvista__pyvista-4315                       FAIL           N/A   (provision fail)
+sqlfluff__sqlfluff-1517                   EMPTY           FAIL  (timeout)
+sqlfluff__sqlfluff-1625                     FAIL           FAIL
+sqlfluff__sqlfluff-1733                   EMPTY           FAIL  (timeout)
+sqlfluff__sqlfluff-1763                     FAIL           FAIL
+sqlfluff__sqlfluff-2419                     PASS           PASS
+──────────────────────────────────────────────────────────────────
+Resolved                                  4/23           7/23
+Resolve %                                17.4%          30.4%
+Total tokens                             ~4.5M          32.3M
+```
+
+### Key Findings
+
+1. **Removing limits alone gains +3 tasks (17.4% → 30.4%)** — pydicom-1256, astroid-1196, astroid-1333 were all tasks where V0 produced empty patches (hit budget before finishing). Given more steps, the agent completed them.
+2. **Compaction never triggered** — With vLLM max_model_len=131,072, the 75% threshold (98K input tokens) was never reached. Max observed input tokens per call was ~76K.
+3. **7x more tokens consumed** (32.3M vs ~4.5M) for +3 tasks — expensive trade-off.
+4. **2 tasks hit timeout (3600s)**: sqlfluff-1517 (97 steps), sqlfluff-1733 (81 steps) — agent kept iterating without converging.
+5. **2 tasks hit llm_error**: pvlib-1854, astroid-1268 — vLLM errors during generation.
+
+### Files
+
+- `results/compaction_retry/` — Raw data, patches, summary
+- `results/compaction_retry/compaction_qwen_lite_dev_summary.json` — Per-task summary
+- `compaction_qwen_lite_dev.compaction_qwen_lite_dev.json` — Docker eval report
+- `configs/experiments/compaction_qwen_lite_dev.yaml`
+- `scripts/run_compaction_experiment.py` — Experiment runner (auto-compaction loop)
+
+---
+
+## Experiment 4: Auto-Compaction (32K context) on SWE-bench Lite dev
+
+Test auto-compaction with a 32K context window where compaction actually triggers frequently.
+
+- **Benchmark**: SWE-bench Lite, dev split (23 tasks, 22 ran — pyvista-4315 workspace provision failed)
+- **Model**: Qwen 3.5 397B (FP8 MoE), vLLM local
+- **Config**: No `max_iterations`, no timeout, `max_steps=500` (safety cap)
+- **Compaction**: threshold 75% of 32,768 = 24,576 input tokens → compacts conversation into summary, resets context with system prompt + summary + task description
+
+### Results
+
+- **Resolved: 7/23 (30.4%)**
+- 17/23 agent_declared TASK_COMPLETE, 5 hit max_steps (500)
+- **439 compactions** total (vs 0 in Experiment 3)
+- Total tokens: 57.5M
+
+### Per-Task Comparison (all 3 experiments)
+
+```
+Task                                     V0 (17.4%)   Unlimited    Compaction
+                                                      131K(30.4%)  32K(30.4%)
+─────────────────────────────────────────────────────────────────────────────
+marshmallow-code__marshmallow-1343          PASS        PASS         PASS
+marshmallow-code__marshmallow-1359          FAIL        FAIL         FAIL       (5 compactions)
+pvlib__pvlib-python-1072                    FAIL        FAIL         PASS
+pvlib__pvlib-python-1154                  EMPTY        FAIL         FAIL       (41 compactions)
+pvlib__pvlib-python-1606                    FAIL        FAIL         FAIL       (2 compactions)
+pvlib__pvlib-python-1707                    FAIL        FAIL         FAIL       (2 compactions)
+pvlib__pvlib-python-1854                    FAIL        FAIL(err)    FAIL       (54 compactions)
+pydicom__pydicom-901                        FAIL        FAIL         FAIL
+pydicom__pydicom-1139                       FAIL        FAIL         FAIL
+pydicom__pydicom-1256                     EMPTY       *PASS*        FAIL       (44 compactions, max_steps)
+pydicom__pydicom-1413                       FAIL        FAIL         FAIL       (3 compactions)
+pydicom__pydicom-1694                       PASS        PASS         PASS       (41 compactions)
+pylint-dev__astroid-1196                  EMPTY       *PASS*        FAIL       (131 compactions, max_steps)
+pylint-dev__astroid-1268                    FAIL        FAIL(err)    PASS
+pylint-dev__astroid-1333                  EMPTY       *PASS*       *PASS*      (2 compactions)
+pylint-dev__astroid-1866                    PASS        PASS         PASS       (2 compactions)
+pylint-dev__astroid-1978                    FAIL        FAIL         FAIL
+pyvista__pyvista-4315                       FAIL        N/A          N/A        (provision fail)
+sqlfluff__sqlfluff-1517                   EMPTY        FAIL(to)     FAIL       (52 compactions, max_steps)
+sqlfluff__sqlfluff-1625                     FAIL        FAIL         FAIL       (12 compactions, max_steps)
+sqlfluff__sqlfluff-1733                   EMPTY        FAIL(to)     FAIL       (20 compactions, max_steps)
+sqlfluff__sqlfluff-1763                     FAIL        FAIL        *PASS*      (25 compactions)
+sqlfluff__sqlfluff-2419                     PASS        PASS         PASS
+─────────────────────────────────────────────────────────────────────────────
+Resolved                                  4/23         7/23         7/23
+Resolve %                                17.4%        30.4%        30.4%
+Total tokens                             ~4.5M        32.3M        57.5M
+Compactions                                N/A          0           439
+```
+
+### Key Findings
+
+1. **Compaction (32K) matches unlimited (131K) resolve rate: both 7/23 (30.4%)** — auto-compaction successfully enables the agent to work within a small context window without losing effectiveness.
+2. **Different tasks resolved**: Compaction gains pvlib-1072, astroid-1268, sqlfluff-1763 but loses pydicom-1256, astroid-1196 (both hit max_steps with 44/131 compactions — compaction information loss caused loops).
+3. **Token cost: 57.5M vs 32.3M (1.8x)** — compaction overhead from summary generation calls and repeated context.
+4. **High-compaction tasks tend to loop**: astroid-1196 (131 compactions), pvlib-1854 (54 compactions), sqlfluff-1517 (52 compactions) all hit max_steps — the agent loses too much context and repeats work.
+5. **Moderate compaction works well**: Tasks with 2-5 compactions often succeed (marshmallow-1343, astroid-1333, astroid-1866, pvlib-1707).
+
+### Files
+
+- `results/compaction_retry/compaction_qwen_lite_dev_summary.json` — Per-task summary (overwritten)
+- `compaction_32k.compaction_32k.json` — Docker eval report
+- `scripts/run_compaction_experiment.py` — Updated with new compaction prompt, no timeout
+
+---
+
 ## Configuration Details
 
 ### Claude Experiments

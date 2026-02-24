@@ -31,12 +31,15 @@ class ExperimentLogger:
             with open(self.log_path, "a") as f:
                 f.write(json.dumps(event, default=str) + "\n")
 
-    def log_run_start(self, task_id: str, config: dict[str, Any]) -> None:
-        self._write_event({
+    def log_run_start(self, task_id: str, config: dict[str, Any], problem_statement: str = "") -> None:
+        event: dict[str, Any] = {
             "event": "run_start",
             "task_id": task_id,
             "config": config,
-        })
+        }
+        if problem_statement:
+            event["problem_statement"] = problem_statement
+        self._write_event(event)
 
     def log_llm_call(
         self,
@@ -49,8 +52,9 @@ class ExperimentLogger:
         cache_creation_input_tokens: int = 0,
         cache_read_input_tokens: int = 0,
         cost_usd: float = 0.0,
+        assistant_content: Any = None,
     ) -> None:
-        self._write_event({
+        event: dict[str, Any] = {
             "event": "llm_call",
             "task_id": task_id,
             "iteration": iteration,
@@ -61,15 +65,23 @@ class ExperimentLogger:
             "cost_usd": round(cost_usd, 6),
             "stop_reason": stop_reason,
             "has_tool_use": has_tool_use,
-        })
+        }
+        if assistant_content is not None:
+            event["assistant_content"] = assistant_content
+        self._write_event(event)
 
     def log_tool_call(self, task_id: str, tool_call: ToolCall) -> None:
-        self._write_event({
+        event: dict[str, Any] = {
             "event": "tool_call",
             "task_id": task_id,
             "tool_name": tool_call.tool_name,
             "duration_seconds": tool_call.duration_seconds,
-        })
+        }
+        if tool_call.tool_input:
+            event["tool_input"] = tool_call.tool_input
+        if tool_call.tool_result:
+            event["tool_result"] = tool_call.tool_result[:10000]
+        self._write_event(event)
 
     def log_verification(
         self,

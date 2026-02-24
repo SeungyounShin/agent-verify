@@ -39,6 +39,7 @@ class AgentHarness:
         self.verifier: Verifier = create_verifier(config.verification_method)
         self.recovery: RecoveryStrategy = create_recovery_strategy(config.recovery_strategy)
         self.logger = logger
+        self._last_context: Context | None = None
 
         # Inject LLM client into recovery strategy if needed
         if isinstance(self.recovery, CompactAndRetry):
@@ -48,8 +49,16 @@ class AgentHarness:
         """Run the agent on a task with verification/recovery loop."""
         task.workspace_dir = task.workspace_dir or self.config.workspace_dir
 
+        # Re-create tools rooted at the task's actual workspace so the agent
+        # starts inside the repo directory (not the parent workspace root).
+        if task.workspace_dir != self.config.workspace_dir:
+            self.tools = create_default_toolset(task.workspace_dir)
+
         if self.logger:
-            self.logger.log_run_start(task.task_id, self.config.model_dump())
+            self.logger.log_run_start(
+                task.task_id, self.config.model_dump(),
+                problem_statement=task.description,
+            )
 
         context = Context()
         context.add_user_message(task.description)
@@ -71,6 +80,8 @@ class AgentHarness:
                 completion_reason="error",
                 error=str(e),
             )
+
+        self._last_context = context
 
         if self.logger:
             self.logger.log_run_end(task.task_id, {
@@ -134,6 +145,7 @@ class AgentHarness:
                     cache_creation_input_tokens=response.cache_creation_input_tokens,
                     cache_read_input_tokens=response.cache_read_input_tokens,
                     cost_usd=response.cost_usd,
+                    assistant_content=response.content,
                 )
 
             # Add assistant response to context
