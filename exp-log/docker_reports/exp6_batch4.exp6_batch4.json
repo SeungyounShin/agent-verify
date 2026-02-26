@@ -1,0 +1,30 @@
+{
+    "total_instances": 3,
+    "submitted_instances": 3,
+    "completed_instances": 3,
+    "resolved_instances": 1,
+    "unresolved_instances": 2,
+    "empty_patch_instances": 0,
+    "error_instances": 0,
+    "completed_ids": [
+        "pydicom__pydicom-1694",
+        "pylint-dev__astroid-1268",
+        "pyvista__pyvista-4315"
+    ],
+    "incomplete_ids": [],
+    "empty_patch_ids": [],
+    "submitted_ids": [
+        "pydicom__pydicom-1694",
+        "pylint-dev__astroid-1268",
+        "pyvista__pyvista-4315"
+    ],
+    "resolved_ids": [
+        "pydicom__pydicom-1694"
+    ],
+    "unresolved_ids": [
+        "pylint-dev__astroid-1268",
+        "pyvista__pyvista-4315"
+    ],
+    "error_ids": [],
+    "schema_version": 2
+}
