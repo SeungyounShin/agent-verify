@@ -445,5 +445,63 @@
       "sqlfluff__sqlfluff-1763": {"result": "UNRESOLVED", "steps": 136, "tokens": 4583015},
       "sqlfluff__sqlfluff-2419": {"result": "RESOLVED", "steps": 57, "tokens": 817437}
     }
+  },
+  "experiment_8_qwen35b_verified": {
+    "date": "2025-02-27",
+    "benchmark": "SWE-bench Verified",
+    "split": "test",
+    "num_tasks": 500,
+    "model": "Qwen3.5-35B-A3B",
+    "model_params": "35B total, 3B active (MoE)",
+    "serving": "vLLM local, max_model_len=262144",
+    "config": {
+      "verification": "none",
+      "max_steps": 200,
+      "timeout_seconds": "none",
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 20,
+      "max_context": 262144,
+      "tools": ["file_read", "file_write", "file_edit (lint-gated)", "bash (30K truncation)", "grep (ripgrep)", "glob (pathlib)"],
+      "system_prompt": "enhanced ACI with tool usage guidelines"
+    },
+    "results_overview": {
+      "resolved": 314,
+      "total": 500,
+      "patches_generated": 497,
+      "evaluated": 469,
+      "errors": 1,
+      "empty_patches": 3,
+      "resolve_pct": 62.8,
+      "resolve_pct_evaluated": 67.0,
+      "agent_declared": 211,
+      "max_steps_hit": 276,
+      "llm_error": 10,
+      "total_compactions": 8,
+      "total_tokens": 3264975751,
+      "cost_usd": 0.0
+    },
+    "tool_usage": {
+      "bash": 64071,
+      "file_read": 4419,
+      "file_edit": 1613,
+      "grep": 299,
+      "glob": 248,
+      "task_complete": 87
+    },
+    "per_repo_results": {
+      "django__django": {"resolved": 150, "unresolved": 69, "total": 219, "pct": 68.5},
+      "sympy__sympy": {"resolved": 46, "unresolved": 24, "total": 70, "pct": 65.7},
+      "scikit-learn__scikit-learn": {"resolved": 25, "unresolved": 6, "total": 31, "pct": 80.6},
+      "sphinx-doc__sphinx": {"resolved": 22, "unresolved": 20, "total": 42, "pct": 52.4},
+      "matplotlib__matplotlib": {"resolved": 20, "unresolved": 8, "total": 28, "pct": 71.4},
+      "pydata__xarray": {"resolved": 15, "unresolved": 7, "total": 22, "pct": 68.2},
+      "pytest-dev__pytest": {"resolved": 13, "unresolved": 3, "total": 16, "pct": 81.3},
+      "astropy__astropy": {"resolved": 11, "unresolved": 10, "total": 21, "pct": 52.4},
+      "psf__requests": {"resolved": 6, "unresolved": 2, "total": 8, "pct": 75.0},
+      "pylint-dev__pylint": {"resolved": 5, "unresolved": 5, "total": 10, "pct": 50.0},
+      "pallets__flask": {"resolved": 1, "unresolved": 0, "total": 1, "pct": 100.0},
+      "mwaskom__seaborn": {"resolved": 0, "unresolved": 1, "total": 1, "pct": 0.0}
+    }
   }
 }

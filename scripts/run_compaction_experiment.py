@@ -46,7 +46,7 @@ from agent_verify.tools import create_default_toolset
 # ---------------------------------------------------------------------------
 COMPACTION_THRESHOLD_RATIO = 0.75  # compact when input_tokens > 75% of max_context
 DEFAULT_MAX_CONTEXT = 131072       # vLLM max_model_len
-MAX_STEPS = 2000                   # absolute safety cap on LLM calls per task
+MAX_STEPS = 200                    # absolute safety cap on LLM calls per task
 
 COMPACTION_PROMPT = """\
 Your task is to create a detailed summary of the conversation so far, \

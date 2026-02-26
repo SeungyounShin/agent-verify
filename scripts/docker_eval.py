@@ -147,7 +147,7 @@ def main():
         predictions_path=pred_path,
         max_workers=args.max_workers,
         force_rebuild=False,
-        cache_level="env",
+        cache_level="instance",
         clean=False,
         open_file_limit=4096,
         run_id=args.run_name,

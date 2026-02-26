@@ -405,6 +405,77 @@ Compactions                         N/A      0       439      0        0
 
 ---
 
+## Experiment 8: Qwen3.5-35B-A3B on SWE-bench Verified (500 tasks)
+
+First large-scale evaluation using a smaller MoE model on the full SWE-bench Verified benchmark.
+
+- **Benchmark**: SWE-bench Verified, test split (500 tasks)
+- **Model**: Qwen3.5-35B-A3B (35B total, 3B active), vLLM local, max_model_len=262144 (256K)
+- **Config**: `max_steps=200`, `max_context=262144`, `temperature=0.6`, `top_p=0.95`, `top_k=20`
+- **Tools**: file_read, file_write, file_edit (lint-gated), bash (30K truncation), grep (ripgrep), glob (pathlib)
+- **System prompt**: Enhanced ACI with tool usage guidelines (same as Exp 6)
+- **Note**: Model heavily favored bash tool (90.4% of all tool calls), largely ignoring dedicated grep/glob/file_edit tools
+
+### Results
+
+- **Resolved: 314/500 (62.8%)**
+- 497/500 patches generated (3 empty/no-patch)
+- 469/497 evaluated (1 error, 27 not evaluated due to empty patches or image issues)
+- 211 agent_declared TASK_COMPLETE, 276 hit max_steps (200), 10 llm_error
+- 8 compactions triggered (256K context sufficient for most tasks)
+- Total tokens: 3.27B
+
+### Per-Repo Breakdown
+
+```
+Repo                              Resolved  Unresolved  Total   %
+──────────────────────────────────────────────────────────────────
+django__django                       150        69       219   68.5%
+sympy__sympy                          46        24        70   65.7%
+scikit-learn__scikit-learn            25         6        31   80.6%
+sphinx-doc__sphinx                    22        20        42   52.4%
+matplotlib__matplotlib                20         8        28   71.4%
+pydata__xarray                        15         7        22   68.2%
+pytest-dev__pytest                    13         3        16   81.3%
+astropy__astropy                      11        10        21   52.4%
+psf__requests                          6         2         8   75.0%
+pylint-dev__pylint                     5         5        10   50.0%
+pallets__flask                         1         0         1  100.0%
+mwaskom__seaborn                       0         1         1    0.0%
+──────────────────────────────────────────────────────────────────
+TOTAL                                314       155       469   67.0%
+```
+
+### Tool Usage
+
+```
+Tool          Calls      %
+──────────────────────────
+bash          64,071   90.4%
+file_read      4,419    6.2%
+file_edit      1,613    2.3%
+grep             299    0.4%
+glob             248    0.3%
+task_complete     87    0.1%
+```
+
+### Key Findings
+
+1. **62.8% resolve rate on SWE-bench Verified** — strong result for a 3B-active MoE model. For context, top leaderboard systems achieve ~55-70% on Verified.
+2. **Model ignores ACI tools**: Despite system prompt guidance, 90.4% of tool calls are bash. The 35B model has weak instruction following for tool selection, defaulting to shell commands for everything (grep, cat, sed via bash instead of dedicated tools).
+3. **55.2% of tasks hit max_steps (200)**: Many tasks loop without converging, especially on harder repos (astropy, sphinx). Raising max_steps might help some but would increase cost.
+4. **scikit-learn and pytest are easiest** (80%+), while pylint, astropy, sphinx are hardest (~50%).
+5. **256K context is sufficient**: Only 8 compactions across 500 tasks. The model rarely fills the context window.
+6. **3.27B total tokens for 500 tasks** — average ~6.5M tokens per task, heavily skewed by max_steps tasks.
+
+### Files
+
+- `results/exp8_qwen35b_verified/` — Raw data, patches, summary
+- `configs/experiments/exp8_qwen35b_verified.yaml`
+- `exp8_final.exp8_final.json` — Docker eval report (final, all 500 tasks)
+
+---
+
 ## Configuration Details
 
 ### Claude Experiments
