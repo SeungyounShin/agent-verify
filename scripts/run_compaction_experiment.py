@@ -36,9 +36,10 @@ load_dotenv()
 from agent_verify.benchmark.base import Task
 from agent_verify.benchmark.swebench import load_swebench_tasks, provision_workspace
 from agent_verify.config import ExperimentConfig, load_config
-from agent_verify.context import Context
+from agent_verify.context import Context, ToolCall
 from agent_verify.harness import _create_llm_client, TASK_COMPLETE_MARKER
 from agent_verify.llm.base import LLMClient
+from agent_verify.logging.logger import ExperimentLogger
 from agent_verify.tools import create_default_toolset
 
 # ---------------------------------------------------------------------------
@@ -46,7 +47,7 @@ from agent_verify.tools import create_default_toolset
 # ---------------------------------------------------------------------------
 COMPACTION_THRESHOLD_RATIO = 0.75  # compact when input_tokens > 75% of max_context
 DEFAULT_MAX_CONTEXT = 131072       # vLLM max_model_len
-MAX_STEPS = 200                    # absolute safety cap on LLM calls per task
+DEFAULT_MAX_STEPS = 200            # absolute safety cap on LLM calls per task
 
 COMPACTION_PROMPT = """\
 Your task is to create a detailed summary of the conversation so far, \
@@ -138,11 +139,25 @@ def run_task(
     config: ExperimentConfig,
     output_dir: Path,
     max_context: int,
+    max_steps: int = 200,
 ) -> TaskRunResult:
     tag = f"[{task.task_id}]"
     t0 = time.time()
     log_path = output_dir / f"{config.experiment_id}_log.jsonl"
-    print(f"{tag} Starting task (max_context={max_context})", flush=True)
+    print(f"{tag} Starting task (max_context={max_context}, max_steps={max_steps})", flush=True)
+
+    # Structured trace logger (writes full conversation to JSONL)
+    trace_logger = ExperimentLogger(config.experiment_id, output_dir=str(output_dir))
+    trace_logger.log_run_start(
+        task_id=task.task_id,
+        config={
+            "llm": {"provider": config.harness.llm.provider, "model": config.harness.llm.model,
+                     "max_tokens": config.harness.llm.max_tokens, "temperature": config.harness.llm.temperature},
+            "max_context": max_context, "max_steps": max_steps,
+            "system_prompt": config.harness.system_prompt,
+        },
+        problem_statement=task.description,
+    )
 
     llm = _create_llm_client(config.harness.llm)
     tools = create_default_toolset(task.workspace_dir)
@@ -170,7 +185,7 @@ def run_task(
     ctx = Context()
     ctx.add_user_message(task_msg)
 
-    for step in range(MAX_STEPS):
+    for step in range(max_steps):
         # --- Auto-compaction ---
         if step > 0 and last_input_tokens > max_context * COMPACTION_THRESHOLD_RATIO:
             print(f"{tag} Compacting (input_tokens={last_input_tokens}, "
@@ -222,15 +237,28 @@ def run_task(
         print(f"{tag} step={step} in={response.input_tokens} out={response.output_tokens} "
               f"tools={tool_names} stop={response.stop_reason}")
 
+        trace_logger.log_llm_call(
+            task_id=task.task_id, iteration=step,
+            input_tokens=response.input_tokens, output_tokens=response.output_tokens,
+            stop_reason=response.stop_reason, has_tool_use=response.has_tool_use,
+            assistant_content=response.content,
+        )
+
         ctx.add_assistant_message(response.content)
 
         # --- Tool calls ---
         if response.has_tool_use:
             for tu in response.tool_uses:
+                t_start = time.time()
                 try:
                     result = tools.execute(tu["name"], **tu["input"])
                 except Exception as e:
                     result = f"Error: {e}"
+                t_dur = time.time() - t_start
+                trace_logger.log_tool_call(task.task_id, ToolCall(
+                    tool_name=tu["name"], tool_input=tu["input"],
+                    tool_result=str(result), duration_seconds=t_dur,
+                ))
                 ctx.add_tool_result(tu["id"], result)
         else:
             # --- Check TASK_COMPLETE ---
@@ -270,6 +298,13 @@ def run_task(
         total_output_tokens=total_out,
         wall_clock_seconds=elapsed,
     )
+    trace_logger.log_run_end(task.task_id, {
+        "resolved": completion_reason == "agent_declared",
+        "completion_reason": completion_reason,
+        "compactions": compactions, "total_steps": steps,
+        "total_input_tokens": total_in, "total_output_tokens": total_out,
+        "wall_clock_seconds": elapsed,
+    })
     _append_jsonl(asdict(result), log_path)
 
     has_diff = "yes" if diff.strip() else "no"
@@ -286,6 +321,7 @@ async def run_experiment(
     config: ExperimentConfig,
     max_parallel: int,
     max_context: int,
+    max_steps: int = 200,
 ) -> list[TaskRunResult]:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -295,7 +331,8 @@ async def run_experiment(
     tasks = load_swebench_tasks(
         split=config.split, instance_ids=ids, dataset_name=config.dataset_name,
     )
-    print(f"Loaded {len(tasks)} tasks\n")
+    print(f"Loaded {len(tasks)} tasks")
+    print(f"Settings: max_steps={max_steps}, max_context={max_context}, parallel={max_parallel}\n")
 
     print("Provisioning workspaces...")
     for t in tasks:
@@ -308,7 +345,7 @@ async def run_experiment(
     loop = asyncio.get_event_loop()
     with ThreadPoolExecutor(max_workers=max_parallel) as pool:
         futs = [
-            loop.run_in_executor(pool, run_task, t, config, output_dir, max_context)
+            loop.run_in_executor(pool, run_task, t, config, output_dir, max_context, max_steps)
             for t in tasks
         ]
         raw = await asyncio.gather(*futs, return_exceptions=True)
@@ -358,12 +395,14 @@ async def run_experiment(
 def main():
     p = argparse.ArgumentParser(description="Auto-compaction experiment")
     p.add_argument("--config", required=True)
+    p.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS,
+                   help="Max LLM steps per task")
     p.add_argument("--parallel", type=int, default=5)
     p.add_argument("--max-context", type=int, default=DEFAULT_MAX_CONTEXT)
     args = p.parse_args()
 
     config = load_config(args.config)
-    asyncio.run(run_experiment(config, args.parallel, args.max_context))
+    asyncio.run(run_experiment(config, args.parallel, args.max_context, args.max_steps))
 
 
 if __name__ == "__main__":

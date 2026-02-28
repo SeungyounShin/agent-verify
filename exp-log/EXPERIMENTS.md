@@ -476,6 +476,86 @@ task_complete     87    0.1%
 
 ---
 
+## Experiment 9: 100-Step Compaction on SWE-bench Verified (500 tasks)
+
+Same model and tools as Exp 8, but with max_steps halved (200→100). Tests whether a tighter step budget forces the agent to be more efficient, reducing wasted loops.
+
+- **Benchmark**: SWE-bench Verified, test split (500 tasks)
+- **Model**: Qwen3.5-35B-A3B (35B total, 3B active), vLLM local, max_model_len=262144 (256K)
+- **Config**: `max_steps=100`, `max_context=262144`, `temperature=0.6`, `top_p=0.95`, `top_k=20`
+- **Tools**: file_read, file_write, file_edit (lint-gated), bash (30K truncation), grep (ripgrep), glob (pathlib)
+- **System prompt**: Same enhanced ACI as Exp 8
+- **Traces**: Full conversation traces saved via ExperimentLogger (viewable with `scripts/trace_viewer.py`)
+
+### Results
+
+- **Resolved: 320/500 (64.0%)** — up from 62.8% in Exp 8 (+1.2%p)
+- 478/500 patches submitted, 476 evaluated (2 errors)
+- Resolved on evaluated: 320/476 = 67.2% (vs Exp 8: 314/469 = 67.0%)
+
+### Comparison with Exp 8
+
+```
+                    Exp8 (200 steps)    Exp9 (100 steps)    Diff
+─────────────────────────────────────────────────────────────────
+Resolved / 500         314 (62.8%)        320 (64.0%)     +6 (+1.2%p)
+Step budget                    200                100      -50%
+Both resolved                  275
+Only Exp9 (new)                 45
+Only Exp8 (regress)             39
+Net gain                        +6
+```
+
+### Per-Repo Breakdown (Exp 8 → Exp 9)
+
+```
+Repo                         Exp8            Exp9         Diff
+──────────────────────────────────────────────────────────────────
+django/django             150/219=68.5%   154/222=69.4%   +0.9
+sympy/sympy                46/ 70=65.7%    48/ 70=68.6%   +2.9
+sphinx-doc/sphinx          22/ 42=52.4%    25/ 41=61.0%   +8.6
+scikit-learn/scikit-learn  25/ 31=80.6%    24/ 31=77.4%   -3.2
+matplotlib/matplotlib      20/ 28=71.4%    16/ 30=53.3%  -18.1
+astropy/astropy            11/ 21=52.4%    12/ 22=54.5%   +2.2
+pydata/xarray              15/ 22=68.2%    16/ 21=76.2%   +8.0
+pytest-dev/pytest          13/ 16=81.2%    13/ 18=72.2%   -9.0
+pylint-dev/pylint           5/ 10=50.0%     3/ 10=30.0%  -20.0
+psf/requests                6/  8=75.0%     7/  8=87.5%  +12.5
+mwaskom/seaborn             0/  1= 0.0%     1/  2=50.0%  +50.0
+pallets/flask               1/  1=100.0%    1/  1=100.0%   0.0
+```
+
+### Tool Usage (Exp 8 → Exp 9)
+
+```
+Tool          Exp8 Calls    %      Exp9 Calls    %      Δ
+──────────────────────────────────────────────────────────────
+bash           64,071    90.7%      34,970    83.8%   -6.9%p
+file_read       4,419     6.3%       4,466    10.7%   +4.5%p
+file_edit       1,613     2.3%       1,544     3.7%   +1.4%p
+grep              299     0.4%         332     0.8%   +0.4%p
+glob              248     0.4%         268     0.6%   +0.3%p
+TOTAL          70,650              41,715             -41%
+```
+
+### Key Findings
+
+1. **64.0% resolve rate with half the steps** — 100-step budget is more efficient than 200. Net +6 tasks resolved.
+2. **41% fewer total tool calls** (70K→42K) — significant compute savings with equal or better performance.
+3. **Improved ACI tool adoption**: bash dropped from 90.7%→83.8%, while file_read rose from 6.3%→10.7%. The tighter step budget may force the model to use more efficient dedicated tools.
+4. **Big gains on sphinx (+8.6%p) and xarray (+8.0%p)** — tasks that previously looped in 200 steps now produce correct patches earlier.
+5. **Regressions on matplotlib (-18.1%p) and pylint (-20.0%p)** — some tasks genuinely need more than 100 steps.
+6. **45 new solves vs 39 regressions** — not just the same tasks shifting; the shorter budget unlocks different tasks while losing others.
+
+### Files
+
+- `results/exp9_100step_compaction/` — Raw data, patches, traces, summary
+- `results/exp9_100step_compaction/exp9_100step_compaction.jsonl` — Full trace (1016 events for 10-task pilot, full 500-task trace in same dir)
+- `configs/experiments/exp9_100step_compaction.yaml`
+- `exp9_final.exp9_final.json` — Docker eval report
+
+---
+
 ## Configuration Details
 
 ### Claude Experiments

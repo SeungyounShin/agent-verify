@@ -1,0 +1,45 @@
+{
+    "total_instances": 8,
+    "submitted_instances": 8,
+    "completed_instances": 8,
+    "resolved_instances": 5,
+    "unresolved_instances": 3,
+    "empty_patch_instances": 0,
+    "error_instances": 0,
+    "completed_ids": [
+        "django__django-13807",
+        "django__django-14376",
+        "django__django-16255",
+        "django__django-16527",
+        "django__django-16667",
+        "sympy__sympy-16886",
+        "sympy__sympy-19637",
+        "sympy__sympy-24539"
+    ],
+    "incomplete_ids": [],
+    "empty_patch_ids": [],
+    "submitted_ids": [
+        "django__django-13807",
+        "django__django-14376",
+        "django__django-16255",
+        "django__django-16527",
+        "django__django-16667",
+        "sympy__sympy-16886",
+        "sympy__sympy-19637",
+        "sympy__sympy-24539"
+    ],
+    "resolved_ids": [
+        "django__django-16255",
+        "django__django-16527",
+        "sympy__sympy-16886",
+        "sympy__sympy-19637",
+        "sympy__sympy-24539"
+    ],
+    "unresolved_ids": [
+        "django__django-13807",
+        "django__django-14376",
+        "django__django-16667"
+    ],
+    "error_ids": [],
+    "schema_version": 2
+}

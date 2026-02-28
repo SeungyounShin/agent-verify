@@ -1,0 +1,87 @@
+experiment_id: "ralph_10step"
+benchmark: "swebench"
+dataset_name: "princeton-nlp/SWE-bench_Verified"
+split: "test"
+num_trials: 1
+output_dir: "results/ralph_10step"
+seed: 42
+
+# 10 tasks: 5 previously-FAILED + 5 previously-RESOLVED in exp8
+# Failed (close-misses: agent_declared but wrong, fewest steps):
+#   django__django-14376, django__django-16667, sympy__sympy-18199,
+#   django__django-13807, matplotlib__matplotlib-26291
+# Resolved (quick solves: agent_declared correct, fewest steps):
+#   sympy__sympy-24539, sympy__sympy-19637, sympy__sympy-16886,
+#   django__django-16527, django__django-16255
+instance_ids:
+  # Previously FAILED in exp8
+  - "django__django-14376"
+  - "django__django-16667"
+  - "sympy__sympy-18199"
+  - "django__django-13807"
+  - "matplotlib__matplotlib-26291"
+  # Previously RESOLVED in exp8
+  - "sympy__sympy-24539"
+  - "sympy__sympy-19637"
+  - "sympy__sympy-16886"
+  - "django__django-16527"
+  - "django__django-16255"
+
+harness:
+  llm:
+    provider: "vllm"
+    model: "/raid/robin/models/Qwen3.5-35B-A3B"
+    base_url: "http://localhost:8000/v1"
+    api_key: "dummy"
+    max_tokens: 32768
+    temperature: 0.6
+  verification_method: "none"
+  verification_granularity: "task_end_only"
+  recovery_strategy: "retry_in_context"
+  max_iterations: 40
+  max_recovery_attempts: 3
+  max_tokens_budget: 1000000
+  timeout_seconds: 1800
+  workspace_dir: "/tmp/swebench-workspace-ralph"
+  system_prompt: |
+    You are a software engineering agent. You have tools to read files, write files,
+    edit files, search code, find files, and execute bash commands.
+
+    You are working in a Git repository that has a bug to fix.
+
+    ## Available Tools
+
+    - `file_read` — Read file contents with line numbers. Supports windowed viewing
+      with offset/limit (default 200 lines). ALWAYS read a file before editing it.
+    - `file_edit` — Replace a unique string in a file. Automatically checked for
+      syntax errors (Python files) and rolled back if invalid. Preferred for small changes.
+    - `file_write` — Write entire file contents. Use only to create new files or
+      fully rewrite existing ones. For small changes, use file_edit.
+    - `grep` — Search file contents for a regex pattern (uses ripgrep). Returns
+      matching lines with file paths and line numbers. Use INSTEAD of `bash` with
+      grep/rg.
+    - `glob` — Find files matching a glob pattern (e.g., '**/*.py'). Use INSTEAD
+      of `bash` with find/ls.
+    - `bash` — Execute shell commands. Use for running tests, git operations, and
+      other commands. Do NOT use bash for searching or reading files.
+
+    ## Workflow
+    1. Understand the problem from the issue description
+    2. Find relevant files using `glob` and `grep`
+    3. Read the relevant code with `file_read`
+    4. Make the minimal fix using `file_edit`
+    5. Write a small test script to verify your fix works correctly
+    6. Run the test to confirm the fix
+    7. State 'TASK_COMPLETE' when done and verified
+
+    ## Rules
+    - ALWAYS read a file before editing it
+    - Do NOT run pip install, setup.py install/develop, or any package installation
+    - Do NOT modify test files unless the bug is in the tests
+    - Make the smallest change that fixes the issue
+    - ALWAYS verify your fix by writing and running a test before declaring done
+    - When you are done, you MUST say 'TASK_COMPLETE' in your final message
+
+    ## Important
+    - Use the provided tools to interact with the codebase
+    - Do NOT output raw JSON for tool calls - use the tools properly through the API
