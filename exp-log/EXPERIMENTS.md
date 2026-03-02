@@ -602,6 +602,7 @@ TOTAL          70,650              41,715             -41%
 
 ## Files
 
+- [`exp-log/swebench_verified_hard.md`](swebench_verified_hard.md) — Hard subset comparison: Opus 4.6 vs Qwen3.5-35B-A3B (45 tasks, 1–4h and >4h difficulty)
 - `exp-log/results.json` — Consolidated results (machine-readable)
 - `results/v0_vs_v2/` — Claude experiment raw data, patches, Docker eval reports
 - `results/qwen_vs_claude/` — Qwen experiment raw data, patches, Docker eval reports
