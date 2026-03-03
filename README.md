@@ -14,6 +14,7 @@ Systematic evaluation of agentic coding harnesses on [SWE-bench](https://www.swe
 | 6 | [Enhanced ACI tools](exp-log/EXPERIMENTS.md#experiment-6-enhanced-agent-computer-interface-aci) | Qwen 3.5 397B | Lite dev (23) | 6/23 (26.1%) |
 | 8 | [Full-scale 200-step](exp-log/EXPERIMENTS.md#experiment-8-qwen35-35b-a3b-on-swe-bench-verified-500-tasks) | Qwen3.5-35B-A3B | Verified (500) | 314/500 (62.8%) |
 | 9 | [100-step compaction](exp-log/EXPERIMENTS.md#experiment-9-100-step-compaction-on-swe-bench-verified-500-tasks) | Qwen3.5-35B-A3B | Verified (500) | 320/500 (64.0%) |
+| 11 | [Prompt v2 + 200 steps](exp-log/EXPERIMENTS.md#experiment-11-prompt-v2--200-steps-on-swe-bench-verified-hard-45-tasks) | Qwen3.5-35B-A3B | Verified Hard (45) | 15/45 (33.3%) |
 | — | [Hard subset comparison](exp-log/swebench_verified_hard.md) | Opus 4.6 vs Qwen3.5-35B-A3B | Verified Hard (45) | 18/45 (40.0%) |
 
 ## Structure

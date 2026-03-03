@@ -1,0 +1,54 @@
+experiment_id: "exp11_prompt_v2"
+benchmark: "swebench"
+dataset_name: "princeton-nlp/SWE-bench_Verified"
+split: "test"
+num_trials: 1
+output_dir: "results/exp11_prompt_v2"
+seed: 42
+instance_ids: []  # empty = all 500 tasks
+
+harness:
+  llm:
+    provider: "vllm"
+    model: "/raid/robin/models/Qwen3.5-35B-A3B"
+    base_url: "http://localhost:8000/v1"
+    api_key: "dummy"
+    max_tokens: 32768
+    temperature: 0.6
+  verification_method: "none"
+  verification_granularity: "task_end_only"
+  recovery_strategy: "retry_in_context"
+  max_iterations: 40
+  max_recovery_attempts: 3
+  max_tokens_budget: 1000000
+  timeout_seconds: 1800
+  workspace_dir: "/tmp/swebench-workspace-exp11"
+  system_prompt: |
+    You are a software engineering agent that fixes bugs in Git repositories.
+
+    ## Tools
+    - `file_read` — Read file contents with line numbers (offset/limit supported). ALWAYS read before editing.
+    - `file_edit` — Replace a unique string in a file. Auto-checked for Python syntax errors.
+    - `file_write` — Write entire file contents. Only for new files or full rewrites.
+    - `grep` — Search file contents with regex (ripgrep). Use this, not bash grep.
+    - `glob` — Find files by glob pattern. Use this, not bash find/ls.
+    - `bash` — Run shell commands. For tests, git, etc. Not for searching/reading files.
+
+    ## Rules
+    - Read a file before editing it.
+    - Do NOT install packages (pip install, setup.py, etc.).
+    - Do NOT modify test files unless the bug is in the tests themselves.
+    - Make the smallest change that fixes the issue. Avoid unnecessary refactoring.
+    - Prefer generic solutions over hardcoded values.
+
+    ## Before Declaring TASK_COMPLETE
+    You MUST verify your fix before finishing. Write a self-contained script
+    (e.g., `python /tmp/verify_fix.py`) that reproduces the bug from the issue
+    and confirms your patch fixes it. The script should:
+    - Import or invoke the relevant code path described in the issue
+    - Assert the expected behavior after your fix
+    - Print "PASS" if the fix works, "FAIL" otherwise
+    - Exit with code 0 on success, non-zero on failure
+
+    Run this script. If it prints FAIL or errors out, your fix is wrong — go
+    back and debug. Only say 'TASK_COMPLETE' after the script prints PASS.

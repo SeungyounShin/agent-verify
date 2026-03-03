@@ -42,6 +42,138 @@ from agent_verify.llm.base import LLMClient
 from agent_verify.logging.logger import ExperimentLogger
 from agent_verify.tools import create_default_toolset
 
+
+# ---------------------------------------------------------------------------
+# Verbose colored output (Claude Code style)
+# ---------------------------------------------------------------------------
+class _C:
+    """ANSI color codes."""
+    RESET    = "\033[0m"
+    BOLD     = "\033[1m"
+    DIM      = "\033[2m"
+    # Foreground
+    RED      = "\033[31m"
+    GREEN    = "\033[32m"
+    YELLOW   = "\033[33m"
+    BLUE     = "\033[34m"
+    MAGENTA  = "\033[35m"
+    CYAN     = "\033[36m"
+    WHITE    = "\033[37m"
+    GRAY     = "\033[90m"
+    # Background
+    BG_BLUE  = "\033[44m"
+    BG_GREEN = "\033[42m"
+    BG_GRAY  = "\033[100m"
+
+
+def _verbose_problem(task_id: str, description: str) -> None:
+    """Print problem statement with colored header."""
+    print(f"\n{_C.BG_BLUE}{_C.WHITE}{_C.BOLD} ● {task_id} {_C.RESET}")
+    print(f"{_C.DIM}{'─' * 70}{_C.RESET}")
+    # Show first ~30 lines of problem
+    lines = description.strip().split("\n")
+    for line in lines[:30]:
+        print(f"  {_C.WHITE}{line}{_C.RESET}")
+    if len(lines) > 30:
+        print(f"  {_C.DIM}... ({len(lines) - 30} more lines){_C.RESET}")
+    print(f"{_C.DIM}{'─' * 70}{_C.RESET}\n")
+
+
+def _verbose_step(step: int, max_steps: int, response, tool_results: list[tuple[str, dict, str, float]] | None = None) -> None:
+    """Print one agent step in Claude Code style."""
+    step_label = f"{_C.DIM}[{step}/{max_steps}]{_C.RESET}"
+
+    # Thinking blocks
+    if hasattr(response, 'content') and isinstance(response.content, list):
+        for block in response.content:
+            if isinstance(block, dict):
+                if block.get("type") == "thinking" and block.get("thinking", "").strip():
+                    text = block["thinking"].strip()
+                    print(f"{step_label} {_C.GRAY}{_C.DIM}💭 {text[:200]}{_C.RESET}")
+                    if len(text) > 200:
+                        print(f"         {_C.GRAY}{_C.DIM}   ...({len(text)} chars){_C.RESET}")
+
+    # Text content
+    text = response.text_content or ""
+    if text.strip():
+        for line in text.strip().split("\n")[:5]:
+            print(f"{step_label} {_C.CYAN}{line[:120]}{_C.RESET}")
+        if text.count("\n") > 5:
+            print(f"         {_C.DIM}...({text.count(chr(10))+1} lines){_C.RESET}")
+
+    # Tool calls + results
+    if response.has_tool_use:
+        for tu in response.tool_uses:
+            name = tu["name"]
+            inp = tu["input"]
+
+            # Color per tool type
+            if name == "bash":
+                color = _C.RED
+                icon = "⚡"
+                detail = inp.get("command", "")[:100]
+            elif name == "file_edit":
+                color = _C.YELLOW
+                icon = "✏️"
+                path = inp.get("path", "")
+                old = inp.get("old_string", "")[:40]
+                detail = f"{path} :: {old}..."
+            elif name == "file_read":
+                color = _C.GREEN
+                icon = "📖"
+                detail = inp.get("path", "")
+                if inp.get("offset"):
+                    detail += f":{inp['offset']}"
+            elif name == "file_write":
+                color = _C.MAGENTA
+                icon = "📝"
+                detail = inp.get("path", "")
+            elif name == "grep":
+                color = _C.BLUE
+                icon = "🔍"
+                detail = f"/{inp.get('pattern', '')}/ {inp.get('path', '')}"
+            elif name == "glob":
+                color = _C.BLUE
+                icon = "📁"
+                detail = inp.get("pattern", "")
+            else:
+                color = _C.WHITE
+                icon = "🔧"
+                detail = json.dumps(inp, default=str)[:80]
+
+            print(f"{step_label} {color}{_C.BOLD}{icon} {name}{_C.RESET}{color}({detail}){_C.RESET}")
+
+    # Tool results
+    if tool_results:
+        for tname, tinp, tresult, tdur in tool_results:
+            result_str = str(tresult).strip()
+            lines = result_str.split("\n")
+            preview = lines[0][:120] if lines else ""
+            nlines = len(lines)
+            dur_str = f"{tdur:.1f}s" if tdur >= 0.1 else f"{tdur*1000:.0f}ms"
+
+            if "Error" in result_str[:100] or "error" in result_str[:100]:
+                rc = _C.RED
+            else:
+                rc = _C.DIM
+
+            print(f"         {rc}↳ {preview}{_C.RESET} {_C.DIM}({nlines} lines, {dur_str}){_C.RESET}")
+
+
+def _verbose_compaction(tag: str, compaction_num: int, input_tokens: int, summary_len: int) -> None:
+    print(f"\n  {_C.BG_GRAY}{_C.WHITE} ♻ Compaction #{compaction_num} {_C.RESET} "
+          f"{_C.DIM}(input_tokens={input_tokens:,} → summarized to {summary_len} chars){_C.RESET}\n")
+
+
+def _verbose_done(tag: str, reason: str, steps: int, compactions: int, elapsed: float, has_diff: bool) -> None:
+    if reason == "agent_declared":
+        icon = f"{_C.GREEN}✓{_C.RESET}"
+    else:
+        icon = f"{_C.RED}✗{_C.RESET}"
+    print(f"\n  {icon} {_C.BOLD}{tag}{_C.RESET} {reason} "
+          f"{_C.DIM}| steps={steps} compactions={compactions} "
+          f"time={elapsed:.0f}s diff={'yes' if has_diff else 'no'}{_C.RESET}\n")
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -140,11 +272,16 @@ def run_task(
     output_dir: Path,
     max_context: int,
     max_steps: int = 200,
+    verbose: bool = False,
 ) -> TaskRunResult:
     tag = f"[{task.task_id}]"
     t0 = time.time()
     log_path = output_dir / f"{config.experiment_id}_log.jsonl"
-    print(f"{tag} Starting task (max_context={max_context}, max_steps={max_steps})", flush=True)
+
+    if verbose:
+        _verbose_problem(task.task_id, task.description)
+    else:
+        print(f"{tag} Starting task (max_context={max_context}, max_steps={max_steps})", flush=True)
 
     # Structured trace logger (writes full conversation to JSONL)
     trace_logger = ExperimentLogger(config.experiment_id, output_dir=str(output_dir))
@@ -213,7 +350,10 @@ def run_task(
             ctx = Context()
             ctx.add_user_message(task_msg)
             last_input_tokens = 0  # reset after compaction
-            print(f"{tag} Compaction #{compactions} done ({len(summary)} chars)")
+            if verbose:
+                _verbose_compaction(tag, compactions, last_input_tokens, len(summary))
+            else:
+                print(f"{tag} Compaction #{compactions} done ({len(summary)} chars)")
 
         # --- LLM call ---
         try:
@@ -233,9 +373,11 @@ def run_task(
         total_in += response.input_tokens
         total_out += response.output_tokens
         steps += 1
-        tool_names = [tu["name"] for tu in response.tool_uses] if response.has_tool_use else []
-        print(f"{tag} step={step} in={response.input_tokens} out={response.output_tokens} "
-              f"tools={tool_names} stop={response.stop_reason}")
+
+        if not verbose:
+            tool_names = [tu["name"] for tu in response.tool_uses] if response.has_tool_use else []
+            print(f"{tag} step={step} in={response.input_tokens} out={response.output_tokens} "
+                  f"tools={tool_names} stop={response.stop_reason}")
 
         trace_logger.log_llm_call(
             task_id=task.task_id, iteration=step,
@@ -247,6 +389,7 @@ def run_task(
         ctx.add_assistant_message(response.content)
 
         # --- Tool calls ---
+        tool_result_log: list[tuple[str, dict, str, float]] = []
         if response.has_tool_use:
             for tu in response.tool_uses:
                 t_start = time.time()
@@ -260,11 +403,21 @@ def run_task(
                     tool_result=str(result), duration_seconds=t_dur,
                 ))
                 ctx.add_tool_result(tu["id"], result)
+                tool_result_log.append((tu["name"], tu["input"], str(result), t_dur))
+
+            if verbose:
+                _verbose_step(step, max_steps, response, tool_result_log)
         else:
+            if verbose:
+                _verbose_step(step, max_steps, response)
+
             # --- Check TASK_COMPLETE ---
             if TASK_COMPLETE_MARKER in response.text_content:
                 completion_reason = "agent_declared"
-                print(f"{tag} TASK_COMPLETE at step {step}")
+                if verbose:
+                    print(f"\n  {_C.BG_GREEN}{_C.WHITE}{_C.BOLD} ✓ TASK_COMPLETE at step {step} {_C.RESET}")
+                else:
+                    print(f"{tag} TASK_COMPLETE at step {step}")
                 break
             elif response.stop_reason == "end_turn":
                 ctx.add_user_message(
@@ -307,9 +460,12 @@ def run_task(
     })
     _append_jsonl(asdict(result), log_path)
 
-    has_diff = "yes" if diff.strip() else "no"
-    print(f"{tag} Done: {completion_reason} | steps={steps} compactions={compactions} "
-          f"tokens={total_in + total_out:,} time={elapsed:.0f}s diff={has_diff}")
+    has_diff = bool(diff.strip())
+    if verbose:
+        _verbose_done(tag, completion_reason, steps, compactions, elapsed, has_diff)
+    else:
+        print(f"{tag} Done: {completion_reason} | steps={steps} compactions={compactions} "
+              f"tokens={total_in + total_out:,} time={elapsed:.0f}s diff={'yes' if has_diff else 'no'}")
 
     return result
 
@@ -322,6 +478,7 @@ async def run_experiment(
     max_parallel: int,
     max_context: int,
     max_steps: int = 200,
+    verbose: bool = False,
 ) -> list[TaskRunResult]:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -345,7 +502,7 @@ async def run_experiment(
     loop = asyncio.get_event_loop()
     with ThreadPoolExecutor(max_workers=max_parallel) as pool:
         futs = [
-            loop.run_in_executor(pool, run_task, t, config, output_dir, max_context, max_steps)
+            loop.run_in_executor(pool, run_task, t, config, output_dir, max_context, max_steps, verbose)
             for t in tasks
         ]
         raw = await asyncio.gather(*futs, return_exceptions=True)
@@ -399,10 +556,12 @@ def main():
                    help="Max LLM steps per task")
     p.add_argument("--parallel", type=int, default=5)
     p.add_argument("--max-context", type=int, default=DEFAULT_MAX_CONTEXT)
+    p.add_argument("--verbose", "-v", action="store_true",
+                   help="Colored step-by-step output (thinking, tools, results)")
     args = p.parse_args()
 
     config = load_config(args.config)
-    asyncio.run(run_experiment(config, args.parallel, args.max_context, args.max_steps))
+    asyncio.run(run_experiment(config, args.parallel, args.max_context, args.max_steps, args.verbose))
 
 
 if __name__ == "__main__":

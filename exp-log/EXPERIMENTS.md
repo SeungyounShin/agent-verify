@@ -556,6 +556,63 @@ TOTAL          70,650              41,715             -41%
 
 ---
 
+## Experiment 11: Prompt v2 + 200 Steps on SWE-bench Verified Hard (45 tasks)
+
+Redesigned prompt focusing on simplicity and self-verification, evaluated on the hard subset.
+
+- **Benchmark**: SWE-bench Verified Hard (45 tasks, 1–4h and >4h difficulty)
+- **Model**: Qwen3.5-35B-A3B (35B total, 3B active), vLLM local
+- **Config**: `max_steps=200`, `temperature=0.6`
+- **Key changes vs Exp 9**:
+  1. Simplified prompt: no explicit workflow, agent decides own approach
+  2. Verify script required before TASK_COMPLETE (agent must write and run a test)
+  3. Explicit instruction: "TASK_COMPLETE as plain text not tool call"
+  4. Guidance toward generic solutions over hardcoded values
+
+### Results
+
+- **Resolved: 15/45 (33.3%)** — up from Exp 9 10/45 (22.2%), closing the gap with Opus 18/45 (40.0%)
+- TASK_COMPLETE rate: 30/45 (67%) vs Exp 9 6/45 (13%) — dramatically improved task completion signaling
+- 8 new solves vs Exp 9
+- 5 solves that Opus missed
+- **Union (Exp11v2 + Opus) = 23/45 (51.1%)**
+- 23 compactions total, 242M tokens
+
+### Comparison
+
+```
+                       Exp9 (100 steps)    Exp11v2 (200 steps)    Opus 4.6         Diff (E11 vs E9)
+─────────────────────────────────────────────────────────────────────────────────────────────────────
+Resolved / 45              10 (22.2%)         15 (33.3%)         18 (40.0%)       +5 (+11.1%p)
+TASK_COMPLETE rate          6/45 (13%)        30/45 (67%)        39/45 (87%)      +54%p
+Union with Opus            20/45 (44.4%)      23/45 (51.1%)         —             +6.7%p
+```
+
+### Resolved Task IDs
+
+```
+astropy__astropy-13579      django__django-12708     django__django-13128
+django__django-13344        django__django-13449     django__django-13837
+django__django-14007        django__django-14011     django__django-14631
+django__django-15128        django__django-16263     sphinx-doc__sphinx-11510
+sympy__sympy-12489          sympy__sympy-13852       sympy__sympy-13878
+```
+
+### Key Findings
+
+1. **Prompt simplification yields +11.1%p on hard tasks** — removing the rigid workflow lets the agent allocate effort more naturally.
+2. **TASK_COMPLETE rate jumped from 13% to 67%** — the explicit "plain text not tool call" instruction fixed Exp 9's completion signaling problem where agents solved tasks but never declared done.
+3. **5 solves that Opus missed**: django-13344, django-14011, django-16263, sphinx-11510, sympy-13852 — complementary to Opus, pushing the union to 51.1%.
+4. **Union of Exp11v2 + Opus = 23/45 (51.1%)** — up from 20/45 (44.4%) with Exp9 + Opus. Prompt diversity adds value beyond model diversity.
+5. **200 steps + prompt v2 is better than 100 steps + original prompt** for hard tasks — the additional budget helps when tasks genuinely require more exploration.
+
+### Files
+
+- `exp-log/swebench_verified_hard.md` — Updated comparison table
+- Results evaluated on the same 45 hard-subset tasks as the Opus comparison
+
+---
+
 ## Configuration Details
 
 ### Claude Experiments
@@ -602,7 +659,7 @@ TOTAL          70,650              41,715             -41%
 
 ## Files
 
-- [`exp-log/swebench_verified_hard.md`](swebench_verified_hard.md) — Hard subset comparison: Opus 4.6 vs Qwen3.5-35B-A3B (45 tasks, 1–4h and >4h difficulty)
+- [`exp-log/swebench_verified_hard.md`](swebench_verified_hard.md) — Hard subset comparison: Opus 4.6 vs Qwen3.5-35B-A3B including Exp11v2 (45 tasks, 1–4h and >4h difficulty)
 - `exp-log/results.json` — Consolidated results (machine-readable)
 - `results/v0_vs_v2/` — Claude experiment raw data, patches, Docker eval reports
 - `results/qwen_vs_claude/` — Qwen experiment raw data, patches, Docker eval reports

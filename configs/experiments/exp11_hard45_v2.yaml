@@ -1,0 +1,99 @@
+experiment_id: "exp11_hard45_v2"
+benchmark: "swebench"
+dataset_name: "princeton-nlp/SWE-bench_Verified"
+split: "test"
+num_trials: 1
+output_dir: "results/exp11_hard45_v2"
+seed: 42
+instance_ids:
+  - "astropy__astropy-13398"
+  - "astropy__astropy-13579"
+  - "astropy__astropy-14369"
+  - "django__django-10554"
+  - "django__django-11138"
+  - "django__django-11400"
+  - "django__django-11885"
+  - "django__django-12325"
+  - "django__django-12708"
+  - "django__django-13128"
+  - "django__django-13212"
+  - "django__django-13344"
+  - "django__django-13449"
+  - "django__django-13837"
+  - "django__django-14007"
+  - "django__django-14011"
+  - "django__django-14631"
+  - "django__django-15128"
+  - "django__django-15268"
+  - "django__django-15503"
+  - "django__django-15629"
+  - "django__django-15957"
+  - "django__django-16263"
+  - "django__django-16560"
+  - "django__django-16631"
+  - "pydata__xarray-3993"
+  - "pydata__xarray-6992"
+  - "pylint-dev__pylint-4551"
+  - "pylint-dev__pylint-8898"
+  - "pytest-dev__pytest-10356"
+  - "pytest-dev__pytest-5787"
+  - "pytest-dev__pytest-6197"
+  - "scikit-learn__scikit-learn-25102"
+  - "sphinx-doc__sphinx-11510"
+  - "sphinx-doc__sphinx-7590"
+  - "sphinx-doc__sphinx-8548"
+  - "sphinx-doc__sphinx-9229"
+  - "sphinx-doc__sphinx-9461"
+  - "sympy__sympy-12489"
+  - "sympy__sympy-13852"
+  - "sympy__sympy-13878"
+  - "sympy__sympy-14248"
+  - "sympy__sympy-16597"
+  - "sympy__sympy-17630"
+  - "sympy__sympy-18199"
+
+harness:
+  llm:
+    provider: "vllm"
+    model: "/raid/robin/models/Qwen3.5-35B-A3B"
+    base_url: "http://localhost:8000/v1"
+    api_key: "dummy"
+    max_tokens: 32768
+    temperature: 0.6
+  verification_method: "none"
+  verification_granularity: "task_end_only"
+  recovery_strategy: "retry_in_context"
+  max_iterations: 40
+  max_recovery_attempts: 3
+  max_tokens_budget: 1000000
+  timeout_seconds: 3600
+  workspace_dir: "/tmp/swebench-workspace-exp11-hard45-v2"
+  system_prompt: |
+    You are a software engineering agent that fixes bugs in Git repositories.
+
+    ## Tools
+    - `file_read` — Read file contents with line numbers (offset/limit supported). ALWAYS read before editing.
+    - `file_edit` — Replace a unique string in a file. Auto-checked for Python syntax errors.
+    - `file_write` — Write entire file contents. Only for new files or full rewrites.
+    - `grep` — Search file contents with regex (ripgrep). Use this, not bash grep.
+    - `glob` — Find files by glob pattern. Use this, not bash find/ls.
+    - `bash` — Run shell commands. For tests, git, etc. Not for searching/reading files.
+
+    ## Rules
+    - Read a file before editing it.
+    - Do NOT install packages (pip install, setup.py, etc.).
+    - Do NOT modify test files unless the bug is in the tests themselves.
+    - Make the smallest change that fixes the issue. Avoid unnecessary refactoring.
+    - Prefer generic solutions over hardcoded values.
+
+    ## Finishing
+    Before finishing, you MUST verify your fix:
+    1. Write a self-contained script (e.g., `python /tmp/verify_fix.py`) that
+       reproduces the bug from the issue and confirms your patch fixes it.
+    2. Run the script. It should print "PASS" and exit 0 if the fix works.
+    3. If it prints "FAIL" or errors, your fix is wrong — debug and try again.
+
+    When your verification passes, output the exact text TASK_COMPLETE in your
+    response (not as a tool call — just include the word TASK_COMPLETE in your
+    message text). There is no task_complete tool. You signal completion by
+    writing TASK_COMPLETE as plain text in your response.
