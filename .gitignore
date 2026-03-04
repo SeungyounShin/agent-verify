@@ -10,3 +10,4 @@ results/
 logs/
 .pytest_cache/
 *.jsonl
+/*.json
