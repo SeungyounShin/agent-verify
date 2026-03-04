@@ -2,6 +2,14 @@
 
 Systematic evaluation of agentic coding harnesses on [SWE-bench](https://www.swebench.com/). Compares verification strategies, scaling configurations, and search algorithms across models.
 
+<p align="center">
+  <img src="figures/hard_leaderboard.png" width="700" />
+</p>
+
+<p align="center">
+  <img src="figures/hard_cumulative_steps.png" width="700" />
+</p>
+
 ## Experiments
 
 | # | Description | Model | Benchmark | Result |
