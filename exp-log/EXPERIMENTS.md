@@ -613,6 +613,58 @@ sympy__sympy-12489          sympy__sympy-13852       sympy__sympy-13878
 
 ---
 
+## Experiment 12: Edit-Nudge on SWE-bench Verified Hard (45 tasks)
+
+After each successful `file_edit`, inject a user message nudging the agent to immediately verify the change by running an inline test or /tmp script. Tests whether edit-time verification improves correctness on hard tasks.
+
+- **Benchmark**: SWE-bench Verified Hard (45 tasks, 1–4h and >4h difficulty)
+- **Model**: Qwen3.5-35B-A3B (35B total, 3B active), vLLM local
+- **Config**: `max_steps=200`, `temperature=0.6`
+- **Key change vs Exp 11**: `--edit-nudge` flag injects user message after each successful file_edit:
+  > "You just edited {files}. Before moving on, verify the change is correct: write a short inline python -c or a /tmp test script that exercises the changed code path, run it with bash, and confirm the output is as expected."
+
+### Results
+
+- **Resolved: 17/45 (37.8%)** — up from Exp 11 15/45 (33.3%), nearly matching Opus 18/45 (40.0%)
+- 7 new solves vs Exp 11, 5 regressions, net +2
+- New solves span diverse repos: astropy, django, pytest, sklearn, sphinx
+
+### Comparison
+
+```
+                       Exp9       Exp11         Exp12         Opus 4.6
+                       (100 steps (prompt v2    (edit-nudge
+                        ACI)       verify)       + verify)
+──────────────────────────────────────────────────────────────────────
+Resolved / 45          10 (22.2%) 15 (33.3%)    17 (37.8%)    18 (40.0%)
+Union with Opus        20 (44.4%) 23 (51.1%)    25 (55.6%)        —
+Union Exp11+12+Opus        —          —         27 (60.0%)        —
+```
+
+### Per-Task Breakdown (Exp12 vs Exp11)
+
+```
+Only Exp12 (7 new):   astropy-14369, django-12325, django-15503,
+                      django-16560, pytest-5787, sklearn-25102, sphinx-8548
+Only Exp11 (5 lost):  django-13344, django-14011, django-15128,
+                      django-16263, sympy-12489
+```
+
+### Key Findings
+
+1. **Edit-nudge yields +2 net on hard tasks (33.3% → 37.8%)** — forcing the agent to test after every edit catches errors early and improves final correctness.
+2. **Near Opus parity**: 17/45 vs Opus 18/45 — a 3B-active MoE model with the right prompting strategy nearly matches a frontier model on hard tasks.
+3. **Complementary to Exp 11**: Union of Exp11 + Exp12 = 22/45 (48.9%), union with Opus = 27/45 (60.0%) — different verification strategies solve different tasks.
+4. **New solves are diverse**: Unlike Exp 11 which was Django-heavy, Exp 12 picks up astropy, pytest, sklearn, sphinx tasks — suggesting edit-nudge helps the agent navigate unfamiliar codebases more carefully.
+
+### Files
+
+- `results/exp12_hard45/` — Raw data, patches
+- `configs/experiments/exp12_hard45.yaml`
+- `exp12_hard45_final.exp12_hard45_final.json` — Docker eval report
+
+---
+
 ## Experiment 11 (Full): Prompt v2 + 200 Steps on SWE-bench Verified (500 tasks)
 
 The prompt v2 that improved hard tasks (22.2% → 33.3%) applied to the full SWE-bench Verified benchmark.
@@ -659,13 +711,24 @@ Union                  372 (74.4%)
 
 ---
 
-## Summary: All Experiments on SWE-bench Verified (500 tasks)
+## Summary
 
-| Experiment | Steps | Prompt | Resolved | Rate |
+### Full SWE-bench Verified (500 tasks)
+
+| Experiment | Steps | Strategy | Resolved | Rate |
 |---|---|---|---|---|
 | Exp 8 | 200 | ACI workflow | 314/500 | 62.8% |
-| Exp 9 | 100 | ACI workflow | 320/500 | 64.0% |
+| Exp 9 | 100 | ACI workflow + compaction | 320/500 | 64.0% |
 | **Exp 11** | **200** | **Prompt v2 (verify script)** | **335/500** | **67.0%** |
+
+### SWE-bench Verified Hard (45 tasks)
+
+| Experiment | Steps | Strategy | Resolved | Rate |
+|---|---|---|---|---|
+| Exp 9 | 100 | ACI workflow + compaction | 10/45 | 22.2% |
+| Exp 11 | 200 | Prompt v2 (verify script before completion) | 15/45 | 33.3% |
+| **Exp 12** | **200** | **Prompt v2 + edit-nudge (test after every edit)** | **17/45** | **37.8%** |
+| Opus 4.6 | — | Claude Opus 4.6 (frontier model) | 18/45 | 40.0% |
 
 ---
 

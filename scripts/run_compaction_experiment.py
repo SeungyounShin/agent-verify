@@ -273,6 +273,7 @@ def run_task(
     max_context: int,
     max_steps: int = 200,
     verbose: bool = False,
+    edit_nudge: str | None = None,
 ) -> TaskRunResult:
     tag = f"[{task.task_id}]"
     t0 = time.time()
@@ -405,6 +406,18 @@ def run_task(
                 ctx.add_tool_result(tu["id"], result)
                 tool_result_log.append((tu["name"], tu["input"], str(result), t_dur))
 
+            # Nudge agent to verify after file_edit (if enabled)
+            if edit_nudge:
+                edited_files = [
+                    tu["input"].get("path", "")
+                    for tu, (_, _, res, _) in zip(response.tool_uses, tool_result_log)
+                    if tu["name"] == "file_edit" and res.startswith("Successfully edited")
+                ]
+                if edited_files:
+                    file_list = ", ".join(f"`{f}`" for f in edited_files)
+                    nudge_msg = edit_nudge.replace("{files}", file_list)
+                    ctx.add_user_message(nudge_msg)
+
             if verbose:
                 _verbose_step(step, max_steps, response, tool_result_log)
         else:
@@ -479,6 +492,7 @@ async def run_experiment(
     max_context: int,
     max_steps: int = 200,
     verbose: bool = False,
+    edit_nudge: str | None = None,
 ) -> list[TaskRunResult]:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -502,7 +516,7 @@ async def run_experiment(
     loop = asyncio.get_event_loop()
     with ThreadPoolExecutor(max_workers=max_parallel) as pool:
         futs = [
-            loop.run_in_executor(pool, run_task, t, config, output_dir, max_context, max_steps, verbose)
+            loop.run_in_executor(pool, run_task, t, config, output_dir, max_context, max_steps, verbose, edit_nudge)
             for t in tasks
         ]
         raw = await asyncio.gather(*futs, return_exceptions=True)
@@ -558,10 +572,14 @@ def main():
     p.add_argument("--max-context", type=int, default=DEFAULT_MAX_CONTEXT)
     p.add_argument("--verbose", "-v", action="store_true",
                    help="Colored step-by-step output (thinking, tools, results)")
+    p.add_argument("--edit-nudge", type=str, default=None,
+                   help="User message injected after successful file_edit. "
+                        "Use {files} as placeholder for edited file list. "
+                        "Example: --edit-nudge 'Verify {files} by running a quick test.'")
     args = p.parse_args()
 
     config = load_config(args.config)
-    asyncio.run(run_experiment(config, args.parallel, args.max_context, args.max_steps, args.verbose))
+    asyncio.run(run_experiment(config, args.parallel, args.max_context, args.max_steps, args.verbose, args.edit_nudge))
 
 
 if __name__ == "__main__":
