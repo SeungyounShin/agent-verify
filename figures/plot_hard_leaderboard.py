@@ -7,10 +7,10 @@ import numpy as np
 # Data (sorted by resolve rate descending)
 # ---------------------------------------------------------------------------
 entries = [
-    {"name": "Claude Opus 4.6",                              "pct": 40.0, "sub": "",                          "type": "opus"},
-    {"name": "verify-on-edit",                               "pct": 37.8, "sub": "Qwen/Qwen3.5-35B-A3B",     "type": "qwen"},
-    {"name": "verify-at-last",                               "pct": 33.3, "sub": "Qwen/Qwen3.5-35B-A3B",     "type": "qwen"},
-    {"name": "agent-harness",                                "pct": 22.2, "sub": "Qwen/Qwen3.5-35B-A3B",     "type": "qwen"},
+    {"name": "Claude Opus 4.6",                                       "pct": 40.0, "type": "opus"},
+    {"name": "Qwen/Qwen3.5-35B-A3B\n(verify-on-edit)",               "pct": 37.8, "type": "qwen"},
+    {"name": "Qwen/Qwen3.5-35B-A3B\n(verify-at-last)",               "pct": 33.3, "type": "qwen"},
+    {"name": "Qwen/Qwen3.5-35B-A3B\n(agent-harness)",                "pct": 22.2, "type": "qwen"},
 ]
 
 # ---------------------------------------------------------------------------
@@ -42,20 +42,13 @@ colors = [get_color(e) for e in entries]
 bars = ax.bar(x, [e["pct"] for e in entries], width=bar_width,
               color=colors, edgecolor=BAR_EDGE, linewidth=0, zorder=2)
 
-# Percentage + subtitle labels above bars
+# Percentage labels above bars
 for i, (bar, entry) in enumerate(zip(bars, entries)):
     y_top = bar.get_height()
-    # Percentage (big, bold)
-    ax.text(bar.get_x() + bar.get_width() / 2, y_top + 1.8,
+    ax.text(bar.get_x() + bar.get_width() / 2, y_top + 1.0,
             f"{entry['pct']:.1f}%",
             ha="center", va="bottom", fontsize=20, fontweight="bold",
             color=TEXT_DARK, fontfamily="sans-serif")
-    # Model subtitle (smaller, below percentage)
-    if entry["sub"]:
-        ax.text(bar.get_x() + bar.get_width() / 2, y_top + 0.8,
-                entry["sub"],
-                ha="center", va="top", fontsize=10,
-                color=TEXT_MID, fontfamily="sans-serif")
 
 # X-axis labels (rotated like reference)
 ax.set_xticks(x)
